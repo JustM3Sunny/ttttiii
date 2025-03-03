@@ -27,7 +27,7 @@ const GenerateButton = ({
   text = "Generate Image",
   estimatedTime = 15,
   theme = "dark",
-  credits = 10,
+  credits = 30,
 }: GenerateButtonProps) => {
   const getContainerBg = () => {
     switch (theme) {
@@ -50,7 +50,7 @@ const GenerateButton = ({
     >
       <div className="w-full flex gap-2">
         <Button
-          className={`flex-1 h-[50px] text-base font-medium transition-all duration-300 shadow-lg rounded-xl ${
+          className={`flex-1 h-[60px] text-lg font-medium transition-all duration-300 shadow-lg rounded-xl ${
             theme === "dark"
               ? "bg-gradient-to-r from-purple-800 to-indigo-800 hover:from-purple-700 hover:to-indigo-700"
               : theme === "evening"
@@ -66,12 +66,12 @@ const GenerateButton = ({
         >
           {isLoading ? (
             <div className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-6 w-6 animate-spin" />
               <span>{text}</span>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
+              <Sparkles className="h-6 w-6" />
               <span>{text}</span>
             </div>
           )}
@@ -82,7 +82,7 @@ const GenerateButton = ({
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
-                className={`h-[50px] w-[50px] flex items-center justify-center rounded-xl ${
+                className={`h-[60px] w-[60px] flex items-center justify-center rounded-xl ${
                   theme === "dark"
                     ? "bg-gray-800 border-gray-700 hover:bg-gray-700"
                     : theme === "evening"
@@ -98,8 +98,8 @@ const GenerateButton = ({
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
+                  width="28"
+                  height="28"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"

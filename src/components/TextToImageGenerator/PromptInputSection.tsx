@@ -136,7 +136,11 @@ const PromptInputSection = ({
     <div
       className={`w-full p-4 md:p-6 rounded-xl border ${getBackgroundColor()} shadow-lg transition-colors duration-200`}
     >
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full mt-2 md:mt-0"
+      >
         <TabsList className="mb-4 w-full justify-start bg-transparent">
           <TabsTrigger
             value="text"
@@ -152,13 +156,6 @@ const PromptInputSection = ({
             <ImageIcon className="h-4 w-4 mr-2" />
             Image to Image
           </TabsTrigger>
-          <TabsTrigger
-            value="inpaint"
-            className={`${getTextColor()} data-[state=active]:${getTabsActiveColor()} data-[state=active]:text-white`}
-          >
-            <Palette className="h-4 w-4 mr-2" />
-            Inpainting
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="text" className="space-y-4">
@@ -169,7 +166,7 @@ const PromptInputSection = ({
           <div className="relative">
             <textarea
               id="prompt"
-              className={`w-full h-32 p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${getInputBgColor()} ${getTextColor()} placeholder:${getMutedTextColor()}`}
+              className={`w-full h-32 p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-lg ${getInputBgColor()} ${getTextColor()} placeholder:${getMutedTextColor()}`}
               placeholder="Describe your image here..."
               value={prompt}
               onChange={(e) => onPromptChange(e.target.value)}

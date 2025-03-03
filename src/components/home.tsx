@@ -992,8 +992,53 @@ const Home = () => {
   ) : (
     <div className="min-h-screen dark bg-black flex flex-col md:flex-row">
       {/* Mobile Feature Selector */}
-      <div className="md:hidden bg-black text-white p-2 border-b border-gray-800 overflow-x-auto">
-        <div className="flex space-x-2">
+      <div className="md:hidden bg-black text-white p-3 border-b border-gray-800 overflow-x-auto sticky top-0 z-40">
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-lg font-bold">AI Image Generator</h1>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowChatbot(true)}
+              className="p-2 rounded-full bg-gray-800"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowHistorySidebar(!showHistorySidebar)}
+              className="p-2 rounded-full bg-gray-800"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="10" r="3" />
+                <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div className="flex space-x-2 overflow-x-auto pb-1">
           {[
             { id: "text-to-image", name: "Text to Image", icon: "📝" },
             { id: "basic-drawing", name: "Drawing", icon: "✏️" },
@@ -1022,7 +1067,7 @@ const Home = () => {
         />
       </div>
 
-      <div className="flex-1 flex flex-col min-h-screen relative">
+      <div className="flex-1 flex flex-col min-h-screen relative pt-0 md:pt-0">
         {/* AdSense Ad Banner - Removed to fix error */}
 
         <LoadingOverlay
@@ -1032,8 +1077,7 @@ const Home = () => {
           }
           theme={currentTheme}
         />
-        <div className="sticky top-0 z-50">
-          <BetaVersionBanner theme="dark" />
+        <div className="sticky top-0 z-50 hidden md:block">
           <Header
             title="AI Image Generator"
             onThemeChange={handleThemeChange}
@@ -1044,7 +1088,7 @@ const Home = () => {
           />
         </div>
 
-        <main className="container mx-auto px-2 md:px-4 py-4 md:py-8 max-w-7xl">
+        <main className="container mx-auto px-2 md:px-4 py-2 md:py-8 max-w-7xl">
           <div className="space-y-8">
             {/* Content based on active feature */}
             {activeFeature === "text-to-image" && (
@@ -1256,13 +1300,16 @@ const Home = () => {
             {activeFeature === "text-to-image" && (
               <section className="flex flex-col items-center justify-center space-y-4">
                 <GenerateButton
-                  onClick={handleGenerateImage}
+                  onClick={() => {
+                    setCredits((prev) => Math.max(0, prev - 1));
+                    handleGenerateImage();
+                  }}
                   onFastGenerate={() => {
                     if (credits <= 0) {
                       setShowPaymentPlans(true);
                       return;
                     }
-                    setCredits((prev) => prev - 1);
+                    setCredits((prev) => Math.max(0, prev - 1));
                     handleGenerateImage();
                   }}
                   isLoading={
@@ -1362,7 +1409,7 @@ const Home = () => {
           <div className="container mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="mb-4 md:mb-0">
-                <p className="text-sm">Beta Version 0.9.0</p>
+                <p className="text-sm">Version 1.0.0</p>
                 <p className="text-xs text-gray-400">
                   © 2024 AI Image Generator
                 </p>
@@ -1392,16 +1439,132 @@ const Home = () => {
             </div>
           </div>
         </div>
+
+        {/* Mobile Fixed Bottom Navigation */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 z-40">
+          <div className="flex justify-around items-center py-3">
+            <button
+              onClick={() => setActiveFeature("text-to-image")}
+              className={`flex flex-col items-center ${activeFeature === "text-to-image" ? "text-blue-400" : "text-gray-400"}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                <polyline points="14 2 14 8 20 8" />
+                <path d="M12 18v-6" />
+                <path d="m9 15 3 3 3-3" />
+              </svg>
+              <span className="text-xs mt-1">Generate</span>
+            </button>
+            <button
+              onClick={() => setActiveFeature("basic-drawing")}
+              className={`flex flex-col items-center ${activeFeature === "basic-drawing" ? "text-blue-400" : "text-gray-400"}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                <path d="m2 2 7.586 7.586" />
+                <circle cx="11" cy="11" r="2" />
+              </svg>
+              <span className="text-xs mt-1">Draw</span>
+            </button>
+            <button
+              onClick={() => setActiveFeature("styles")}
+              className={`flex flex-col items-center ${activeFeature === "styles" ? "text-blue-400" : "text-gray-400"}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="13.5" cy="6.5" r="2.5" />
+                <circle cx="19" cy="17" r="2" />
+                <circle cx="6" cy="17" r="2" />
+                <path d="M16 8.2c1 .7 1.7 1.7 2.3 2.8" />
+                <path d="M7.5 8.2c-.7.6-1.2 1.5-1.5 2.4" />
+                <path d="M7 15c.3-1.1.7-2.1 1.5-3" />
+                <path d="M16 15c-.3-1.1-.7-2.1-1.5-3" />
+              </svg>
+              <span className="text-xs mt-1">Styles</span>
+            </button>
+            <button
+              onClick={() => setActiveFeature("history")}
+              className={`flex flex-col items-center ${activeFeature === "history" ? "text-blue-400" : "text-gray-400"}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 8v4l3 3" />
+                <circle cx="12" cy="12" r="10" />
+              </svg>
+              <span className="text-xs mt-1">History</span>
+            </button>
+            <button
+              onClick={() => setShowPaymentPlans(true)}
+              className="flex flex-col items-center text-gray-400"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+              </svg>
+              <span className="text-xs mt-1">Credits</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Floating Chatbot */}
       {showChatbot && (
         <div
-          className="fixed z-50 w-[90vw] md:w-80 h-[500px] shadow-xl rounded-lg overflow-hidden"
+          className="fixed z-50 w-[95vw] md:w-80 h-[500px] shadow-xl rounded-lg overflow-hidden"
           style={{
             ...chatPosition,
-            right: window.innerWidth < 768 ? "5%" : chatPosition.right,
-            left: window.innerWidth < 768 ? "5%" : "auto",
+            right: window.innerWidth < 768 ? "2.5%" : chatPosition.right,
+            left: window.innerWidth < 768 ? "2.5%" : "auto",
+            bottom: window.innerWidth < 768 ? "70px" : chatPosition.bottom,
           }}
         >
           <ChatbotHelp
@@ -1415,7 +1578,7 @@ const Home = () => {
       {!showChatbot && (
         <button
           onClick={() => setShowChatbot(true)}
-          className={`fixed z-50 bottom-5 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-lg ${currentTheme === "dark" ? "bg-gray-800" : currentTheme === "evening" ? "bg-indigo-800" : "bg-white"}`}
+          className={`fixed z-50 bottom-20 md:bottom-5 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-lg ${currentTheme === "dark" ? "bg-gray-800" : currentTheme === "evening" ? "bg-indigo-800" : "bg-white"}`}
         >
           <div className="relative">
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
