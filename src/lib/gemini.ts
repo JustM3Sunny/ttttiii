@@ -2,9 +2,9 @@
 
 const GEMINI_API_KEY = "AIzaSyDc7u7wTVdDG3zP18xnELKs0HX7-hImkmc";
 const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 const GEMINI_VISION_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // Function to analyze an image and generate a similar prompt
 export async function analyzeImageWithGemini(
@@ -66,7 +66,7 @@ export async function enhancePromptWithGemini(prompt: string): Promise<string> {
         {
           parts: [
             {
-              text: `Enhance the following prompt for an AI image generator to make it more detailed and likely to produce a high-quality image. Add specific details about lighting, style, composition, and mood, but maintain the original intent: "${prompt}"`,
+              text: `Enhance the following prompt for an AI image generator to make it more detailed and likely to produce a high-quality image. Add specific details about lighting, style, composition, and mood,without any explainations or something else just give prompt but maintain the original intent: "${prompt}"`,
             },
           ],
         },

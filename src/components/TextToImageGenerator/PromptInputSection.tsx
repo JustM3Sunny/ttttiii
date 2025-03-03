@@ -6,6 +6,10 @@ import {
   Image as ImageIcon,
   Eraser,
   History,
+  Upload,
+  Camera,
+  Palette,
+  Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,7 +34,7 @@ const PromptInputSection = ({
   onPromptChange = () => {},
   onImageUpload = () => {},
   onEnhancePrompt = () => {},
-  theme = "light",
+  theme = "dark",
   recentPrompts = [
     "A futuristic cityscape with flying cars",
     "A serene mountain landscape at sunset",
@@ -38,6 +42,7 @@ const PromptInputSection = ({
   ],
 }: PromptInputSectionProps) => {
   const [isRecording, setIsRecording] = useState(false);
+  const [activeTab, setActiveTab] = useState("text");
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -65,9 +70,9 @@ const PromptInputSection = ({
   const getBackgroundColor = () => {
     switch (theme) {
       case "dark":
-        return "bg-gray-800 border-gray-700";
+        return "bg-gray-900 border-gray-800";
       case "evening":
-        return "bg-indigo-800 border-indigo-700";
+        return "bg-indigo-900/90 backdrop-blur-sm border-indigo-800";
       default:
         return "bg-white border-gray-200";
     }
@@ -86,9 +91,9 @@ const PromptInputSection = ({
   const getInputBgColor = () => {
     switch (theme) {
       case "dark":
-        return "bg-gray-700 border-gray-600";
+        return "bg-gray-800 border-gray-700";
       case "evening":
-        return "bg-indigo-700 border-indigo-600";
+        return "bg-indigo-800 border-indigo-700";
       default:
         return "bg-gray-50 border-gray-300";
     }
@@ -105,28 +110,53 @@ const PromptInputSection = ({
     }
   };
 
+  const getTabsActiveColor = () => {
+    switch (theme) {
+      case "dark":
+        return "bg-indigo-700 hover:bg-indigo-600";
+      case "evening":
+        return "bg-indigo-600 hover:bg-indigo-500";
+      default:
+        return "bg-blue-500 hover:bg-blue-600";
+    }
+  };
+
+  const getButtonHoverColor = () => {
+    switch (theme) {
+      case "dark":
+        return "hover:bg-gray-700";
+      case "evening":
+        return "hover:bg-indigo-700";
+      default:
+        return "hover:bg-gray-100";
+    }
+  };
+
   return (
     <div
-      className={`w-full p-6 rounded-xl border ${getBackgroundColor()} shadow-lg transition-colors duration-200`}
+      className={`w-full p-4 md:p-6 rounded-xl border ${getBackgroundColor()} shadow-lg transition-colors duration-200`}
     >
-      <Tabs defaultValue="text" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4 w-full justify-start bg-transparent">
           <TabsTrigger
             value="text"
-            className={`${getTextColor()} data-[state=active]:bg-blue-500 data-[state=active]:text-white`}
+            className={`${getTextColor()} data-[state=active]:${getTabsActiveColor()} data-[state=active]:text-white`}
           >
+            <Lightbulb className="h-4 w-4 mr-2" />
             Text to Image
           </TabsTrigger>
           <TabsTrigger
             value="image"
-            className={`${getTextColor()} data-[state=active]:bg-blue-500 data-[state=active]:text-white`}
+            className={`${getTextColor()} data-[state=active]:${getTabsActiveColor()} data-[state=active]:text-white`}
           >
+            <ImageIcon className="h-4 w-4 mr-2" />
             Image to Image
           </TabsTrigger>
           <TabsTrigger
             value="inpaint"
-            className={`${getTextColor()} data-[state=active]:bg-blue-500 data-[state=active]:text-white`}
+            className={`${getTextColor()} data-[state=active]:${getTabsActiveColor()} data-[state=active]:text-white`}
           >
+            <Palette className="h-4 w-4 mr-2" />
             Inpainting
           </TabsTrigger>
         </TabsList>
@@ -153,7 +183,7 @@ const PromptInputSection = ({
                       variant="ghost"
                       size="icon"
                       onClick={clearPrompt}
-                      className="rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                      className={`rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300`}
                     >
                       <Eraser className="h-4 w-4" />
                     </Button>
@@ -171,7 +201,7 @@ const PromptInputSection = ({
                       variant="ghost"
                       size="icon"
                       onClick={startVoiceRecording}
-                      className={`rounded-full ${isRecording ? "bg-red-500 hover:bg-red-600" : "bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"}`}
+                      className={`rounded-full ${isRecording ? "bg-red-600 hover:bg-red-700" : "bg-gray-800 hover:bg-gray-700"} text-gray-300`}
                     >
                       <Mic className="h-4 w-4" />
                     </Button>
@@ -189,7 +219,7 @@ const PromptInputSection = ({
                       variant="ghost"
                       size="icon"
                       onClick={onEnhancePrompt}
-                      className="rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+                      className={`rounded-full ${getTabsActiveColor()} text-white`}
                     >
                       <Wand2 className="h-4 w-4" />
                     </Button>
@@ -202,18 +232,7 @@ const PromptInputSection = ({
             </div>
           </div>
 
-          <div className={`flex flex-wrap gap-2 ${getMutedTextColor()}`}>
-            <span className="text-sm font-medium">Try:</span>
-            {recentPrompts.map((text, index) => (
-              <button
-                key={index}
-                onClick={() => useRecentPrompt(text)}
-                className={`text-sm px-3 py-1 rounded-full border ${theme === "light" ? "border-gray-300 hover:bg-gray-100" : "border-gray-600 hover:bg-gray-700"}`}
-              >
-                {text}
-              </button>
-            ))}
-          </div>
+          {/* Recent prompts section is hidden for image-to-image mode */}
         </TabsContent>
 
         <TabsContent value="image" className="space-y-4">
@@ -222,16 +241,20 @@ const PromptInputSection = ({
           </h2>
 
           <div
-            className={`border-2 border-dashed ${theme === "light" ? "border-gray-300" : "border-gray-600"} rounded-lg p-8 text-center`}
+            className={`border-2 border-dashed ${theme === "light" ? "border-gray-300" : "border-gray-700"} rounded-lg p-8 text-center`}
           >
             <div className="flex flex-col items-center justify-center space-y-4">
-              <ImageIcon className={`h-12 w-12 ${getMutedTextColor()}`} />
+              <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
+                <Upload className={`h-8 w-8 ${getMutedTextColor()}`} />
+              </div>
               <div>
                 <p className={getTextColor()}>Drag & drop an image here</p>
                 <p className={getMutedTextColor()}>or</p>
               </div>
               <label className="cursor-pointer">
-                <span className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                <span
+                  className={`px-4 py-2 ${getTabsActiveColor()} text-white rounded-md transition-colors`}
+                >
                   Browse Files
                 </span>
                 <input
@@ -246,6 +269,47 @@ const PromptInputSection = ({
               </p>
             </div>
           </div>
+
+          <div className="mt-6">
+            <h3 className={`text-lg font-medium mb-3 ${getTextColor()}`}>
+              Additional Settings
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label
+                  className={`block text-sm font-medium mb-2 ${getTextColor()}`}
+                >
+                  Prompt Guidance
+                </label>
+                <textarea
+                  className={`w-full h-20 p-3 border rounded-md ${getInputBgColor()} ${getTextColor()}`}
+                  placeholder="Add text to guide the transformation..."
+                />
+              </div>
+              <div>
+                <label
+                  className={`block text-sm font-medium mb-2 ${getTextColor()}`}
+                >
+                  Transformation Strength
+                </label>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-xs ${getMutedTextColor()}`}>
+                    Subtle
+                  </span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    defaultValue="70"
+                    className="w-full"
+                  />
+                  <span className={`text-xs ${getMutedTextColor()}`}>
+                    Strong
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="inpaint" className="space-y-4">
@@ -257,15 +321,19 @@ const PromptInputSection = ({
           </p>
 
           <div
-            className={`border-2 border-dashed ${theme === "light" ? "border-gray-300" : "border-gray-600"} rounded-lg p-8 text-center`}
+            className={`border-2 border-dashed ${theme === "light" ? "border-gray-300" : "border-gray-700"} rounded-lg p-8 text-center`}
           >
             <div className="flex flex-col items-center justify-center space-y-4">
-              <ImageIcon className={`h-12 w-12 ${getMutedTextColor()}`} />
+              <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
+                <Camera className={`h-8 w-8 ${getMutedTextColor()}`} />
+              </div>
               <p className={getTextColor()}>
                 Upload an image to start inpainting
               </p>
               <label className="cursor-pointer">
-                <span className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                <span
+                  className={`px-4 py-2 ${getTabsActiveColor()} text-white rounded-md transition-colors`}
+                >
                   Upload Image
                 </span>
                 <input
@@ -276,6 +344,13 @@ const PromptInputSection = ({
                 />
               </label>
             </div>
+          </div>
+
+          <div className="mt-4">
+            <p className={`text-sm ${getMutedTextColor()}`}>
+              After uploading, you'll be able to paint areas to modify and
+              provide a text prompt for the changes.
+            </p>
           </div>
         </TabsContent>
       </Tabs>

@@ -72,9 +72,9 @@ const ResultsDisplay = ({
   const getBackgroundColor = () => {
     switch (theme) {
       case "dark":
-        return "bg-gray-800 border-gray-700";
+        return "bg-gray-900 border-gray-800";
       case "evening":
-        return "bg-indigo-800 border-indigo-700";
+        return "bg-indigo-900/90 backdrop-blur-sm border-indigo-800";
       default:
         return "bg-white border-gray-200";
     }
@@ -83,9 +83,9 @@ const ResultsDisplay = ({
   const getCardBgColor = () => {
     switch (theme) {
       case "dark":
-        return "bg-gray-900";
+        return "bg-gray-950";
       case "evening":
-        return "bg-indigo-900";
+        return "bg-indigo-950";
       default:
         return "bg-gray-50";
     }
@@ -115,9 +115,9 @@ const ResultsDisplay = ({
   const getLoadingBgColor = () => {
     switch (theme) {
       case "dark":
-        return "bg-gray-700";
+        return "bg-gray-800";
       case "evening":
-        return "bg-indigo-700";
+        return "bg-indigo-800";
       default:
         return "bg-gray-100";
     }
@@ -181,13 +181,22 @@ const ResultsDisplay = ({
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4 w-full justify-start">
-          <TabsTrigger value="preview" className="flex items-center gap-1">
+          <TabsTrigger
+            value="preview"
+            className={`flex items-center gap-1 data-[state=active]:${theme === "evening" ? "bg-indigo-600" : "bg-blue-500"} data-[state=active]:text-white`}
+          >
             Preview
           </TabsTrigger>
-          <TabsTrigger value="adjust" className="flex items-center gap-1">
+          <TabsTrigger
+            value="adjust"
+            className={`flex items-center gap-1 data-[state=active]:${theme === "evening" ? "bg-indigo-600" : "bg-blue-500"} data-[state=active]:text-white`}
+          >
             Adjust
           </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-1">
+          <TabsTrigger
+            value="history"
+            className={`flex items-center gap-1 data-[state=active]:${theme === "evening" ? "bg-indigo-600" : "bg-blue-500"} data-[state=active]:text-white`}
+          >
             History
           </TabsTrigger>
         </TabsList>
@@ -197,7 +206,7 @@ const ResultsDisplay = ({
             className={`w-full overflow-hidden border-0 ${getCardBgColor()}`}
           >
             <CardContent className="p-0">
-              {isLoading || (!imageLoaded && generatedImage) ? (
+              {isLoading ? (
                 <div
                   className={`flex flex-col items-center justify-center h-[500px] ${getLoadingBgColor()}`}
                 >
@@ -326,7 +335,7 @@ const ResultsDisplay = ({
 
                       <Button
                         variant="outline"
-                        className="w-full"
+                        className={`w-full ${theme === "evening" ? "hover:bg-indigo-700 hover:text-white" : ""}`}
                         onClick={() => {
                           setBrightness(100);
                           setContrast(100);
@@ -334,6 +343,14 @@ const ResultsDisplay = ({
                         }}
                       >
                         Reset Adjustments
+                      </Button>
+
+                      <Button
+                        variant="default"
+                        className={`w-full mt-4 ${theme === "evening" ? "bg-indigo-600 hover:bg-indigo-700" : "bg-blue-500 hover:bg-blue-600"}`}
+                        onClick={onModify}
+                      >
+                        Apply Adjustments
                       </Button>
                     </div>
                   </div>
@@ -372,14 +389,27 @@ const ResultsDisplay = ({
                         className="w-full h-auto aspect-square object-cover"
                       />
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-white"
-                          onClick={() => {}}
-                        >
-                          <Layers className="h-6 w-6" />
-                        </Button>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-white"
+                            onClick={() => {
+                              setGeneratedImage(img);
+                              setActiveTab("preview");
+                            }}
+                          >
+                            <Layers className="h-5 w-5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-white"
+                            onClick={() => onVariation()}
+                          >
+                            <Wand2 className="h-5 w-5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -402,14 +432,17 @@ const ResultsDisplay = ({
       </Tabs>
 
       {generatedImage && (
-        <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
+        <div
+          className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start"
+          style={{ maxWidth: "100%", overflowX: "auto", padding: "4px" }}
+        >
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   onClick={onDownload}
                   variant="outline"
-                  className="flex items-center gap-1 h-9"
+                  className={`flex items-center gap-1 h-9 ${theme === "evening" ? "border-indigo-400 hover:bg-indigo-700 hover:text-white" : ""}`}
                 >
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Download</span>
@@ -427,7 +460,7 @@ const ResultsDisplay = ({
                 <Button
                   onClick={onShare}
                   variant="outline"
-                  className="flex items-center gap-1 h-9"
+                  className={`flex items-center gap-1 h-9 ${theme === "evening" ? "border-indigo-400 hover:bg-indigo-700 hover:text-white" : ""}`}
                 >
                   <Share2 className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Share</span>
@@ -445,7 +478,7 @@ const ResultsDisplay = ({
                 <Button
                   onClick={onCopy}
                   variant="outline"
-                  className="flex items-center gap-1 h-9"
+                  className={`flex items-center gap-1 h-9 ${theme === "evening" ? "border-indigo-400 hover:bg-indigo-700 hover:text-white" : ""}`}
                 >
                   <Copy className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Copy</span>
@@ -463,7 +496,7 @@ const ResultsDisplay = ({
                 <Button
                   onClick={onFullscreen}
                   variant="outline"
-                  className="flex items-center gap-1 h-9"
+                  className={`flex items-center gap-1 h-9 ${theme === "evening" ? "border-indigo-400 hover:bg-indigo-700 hover:text-white" : ""}`}
                 >
                   <Maximize2 className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Fullscreen</span>
@@ -481,7 +514,7 @@ const ResultsDisplay = ({
                 <Button
                   onClick={onVariation}
                   variant="outline"
-                  className="flex items-center gap-1 h-9"
+                  className={`flex items-center gap-1 h-9 ${theme === "evening" ? "border-indigo-400 hover:bg-indigo-700 hover:text-white" : ""}`}
                 >
                   <Wand2 className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Variation</span>
@@ -499,7 +532,7 @@ const ResultsDisplay = ({
                 <Button
                   onClick={onUpscale}
                   variant="outline"
-                  className="flex items-center gap-1 h-9"
+                  className={`flex items-center gap-1 h-9 ${theme === "evening" ? "border-indigo-400 hover:bg-indigo-700 hover:text-white" : ""}`}
                 >
                   <ImagePlus className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Upscale</span>
@@ -517,7 +550,7 @@ const ResultsDisplay = ({
                 <Button
                   onClick={onModify}
                   variant="outline"
-                  className="flex items-center gap-1 h-9"
+                  className={`flex items-center gap-1 h-9 ${theme === "evening" ? "border-indigo-400 hover:bg-indigo-700 hover:text-white" : ""}`}
                 >
                   <Edit className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Edit</span>
@@ -535,7 +568,7 @@ const ResultsDisplay = ({
                 <Button
                   onClick={onDelete}
                   variant="outline"
-                  className="flex items-center gap-1 h-9 text-red-500 hover:text-red-600"
+                  className={`flex items-center gap-1 h-9 text-red-500 hover:text-red-600 ${theme === "evening" ? "border-red-400 hover:bg-red-700 hover:text-white" : ""}`}
                 >
                   <Trash2 className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Delete</span>

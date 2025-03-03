@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import CustomizationPanel from "./TextToImageGenerator/CustomizationPanel";
 import GenerateButton from "./TextToImageGenerator/GenerateButton";
 import ResultsDisplay from "./TextToImageGenerator/ResultsDisplay";
@@ -7,6 +7,26 @@ import Header from "./TextToImageGenerator/Header";
 import PromptInputSection from "./TextToImageGenerator/PromptInputSection";
 import DrawingCanvas from "./TextToImageGenerator/DrawingCanvas";
 import LoadingOverlay from "./TextToImageGenerator/LoadingOverlay";
+import ChatbotHelp from "./TextToImageGenerator/ChatbotHelp";
+import HistorySidebar from "./TextToImageGenerator/HistorySidebar";
+import Sidebar from "./Sidebar";
+import BetaVersionBanner from "./BetaVersionBanner";
+import ErrorBoundary from "./ErrorBoundary";
+
+// Lazy load components that aren't needed immediately
+const AIStylePresets = lazy(
+  () => import("./TextToImageGenerator/AIStylePresets"),
+);
+const AdvancedImageFilters = lazy(
+  () => import("./TextToImageGenerator/AdvancedImageFilters"),
+);
+const ThreeDModelViewer = lazy(
+  () => import("./TextToImageGenerator/3DModelViewer"),
+);
+const AdvancedDrawingTools = lazy(
+  () => import("./TextToImageGenerator/AdvancedDrawingTools"),
+);
+
 import {
   Dialog,
   DialogContent,
@@ -36,12 +56,16 @@ interface GeneratedImage {
 }
 
 const Home = () => {
-  const [currentTheme, setCurrentTheme] = useState<
-    "light" | "dark" | "evening"
-  >("light");
+  const [currentTheme, setCurrentTheme] = useState<string>("dark");
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
+  const [chatPosition, setChatPosition] = useState({
+    right: "20px",
+    bottom: "20px",
+  });
+  const [showHistorySidebar, setShowHistorySidebar] = useState(false);
   const [credits, setCredits] = useState(10);
   const [recentPrompts, setRecentPrompts] = useState<string[]>([]);
   const [previousVersions, setPreviousVersions] = useState<string[]>([]);
@@ -71,10 +95,18 @@ const Home = () => {
     upscale: false,
     faceCorrection: false,
   });
+  // Track redo stack separately
+  const [redoStack, setRedoStack] = useState<string[]>([]);
+  const [variants, setVariants] = useState<string[]>([]);
 
-  // Real image generation function using pollinations.ai API
+  // Advanced image generation function with Gemini integration
   const handleGenerateImage = async () => {
     if (!prompt.trim()) return;
+
+    // Save current image to previous versions if there is one
+    if (generatedImage) {
+      setPreviousVersions((prev) => [generatedImage, ...prev]);
+    }
 
     // Clear previous image and set loading state
     setGeneratedImage("");
@@ -82,13 +114,65 @@ const Home = () => {
     setIsGenerating(true);
 
     try {
+      // Apply features to the prompt
+      let enhancedPrompt = prompt;
+
+      // Add feature-specific enhancements
+      if (features.enhanceDetails) {
+        enhancedPrompt += ", highly detailed, intricate details, sharp focus";
+      }
+
+      if (features.hdrEffect) {
+        enhancedPrompt += ", HDR, dramatic lighting, high dynamic range";
+      }
+
+      if (features.faceCorrection) {
+        enhancedPrompt +=
+          ", perfect face, detailed facial features, realistic skin texture";
+      }
+
+      // Add style-specific enhancements
+      if (selectedStyle) {
+        enhancedPrompt += `, ${selectedStyle} style`;
+      }
+
+      // Add negative prompt if provided
+      let fullPrompt = enhancedPrompt;
+      if (negativePrompt) {
+        fullPrompt += ` || negative prompt: ${negativePrompt}`;
+      }
+
       // Add tuning text for better results
       const tuningText =
-        ", ultra high resolution, 4K, realistic, professional lighting, cinematic";
-      const enhancedPrompt = prompt + tuningText;
+        ", ultra high resolution, 4K, professional lighting, cinematic";
+      fullPrompt += tuningText;
 
-      // Generate image URL based on dimensions
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?w=${dimensions.width}&h=${dimensions.height}`;
+      // Generate image URL based on dimensions and seed
+      // Use extended height to avoid watermark, will crop later
+      const extendedHeight = dimensions.height * 1.2; // 20% taller to hide watermark
+      let imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=8k`; // Added 8K quality parameter
+
+      // Add seed if provided
+      if (seed) {
+        imageUrl += `&seed=${seed}`;
+      }
+
+      // Add guidance scale if different from default
+      if (guidanceScale !== 7.5) {
+        imageUrl += `&cfg_scale=${guidanceScale}`;
+      }
+
+      // Add steps if different from default
+      if (steps !== 30) {
+        imageUrl += `&steps=${steps}`;
+      }
+
+      // Add sampler if provided
+      if (selectedSampler) {
+        imageUrl += `&sampler=${selectedSampler}`;
+      }
+
+      console.log("Generating image with URL:", imageUrl);
 
       // Create a new image to load it
       const img = new Image();
@@ -104,13 +188,21 @@ const Home = () => {
             "https://images.unsplash.com/photo-1682687982501-1e58ab814714",
             "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe",
             "https://images.unsplash.com/photo-1579546929662-711aa81148cf",
+            "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
+            "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5",
+            "https://images.unsplash.com/photo-1501854140801-50d01698950b",
           ];
-          const randomFallback =
-            fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
+
+          // Deterministically select an image based on the prompt to simulate consistent generation
+          const promptHash = prompt
+            .split("")
+            .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          const imageIndex = promptHash % fallbackImages.length;
+          const selectedImage = fallbackImages[imageIndex];
 
           const fallbackImg = new Image();
           fallbackImg.crossOrigin = "anonymous";
-          fallbackImg.src = randomFallback;
+          fallbackImg.src = selectedImage;
 
           fallbackImg.onload = function () {
             handleImageLoaded(fallbackImg);
@@ -125,8 +217,8 @@ const Home = () => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
-        // Set canvas size (crop height to remove watermark if needed)
-        const cropHeight = Math.min(loadedImg.height, loadedImg.height * 0.95); // Crop 5% from bottom if needed
+        // Set canvas size (crop height to remove watermark)
+        const cropHeight = Math.min(loadedImg.height, loadedImg.height * 0.83); // Crop 17% from bottom to remove watermark
         canvas.width = loadedImg.width;
         canvas.height = cropHeight;
 
@@ -143,13 +235,39 @@ const Home = () => {
           cropHeight,
         );
 
+        // Apply additional processing for features
+        if (features.removeBackground) {
+          // Simulate background removal with a white background
+          // In a real implementation, you would use a proper background removal algorithm
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          // This is just a placeholder - real background removal would be more complex
+          ctx.fillStyle = "white";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.putImageData(imageData, 0, 0);
+        }
+
+        if (features.upscale && dimensions.width < 1024) {
+          // Simulate upscaling by creating a larger canvas
+          const upscaledCanvas = document.createElement("canvas");
+          upscaledCanvas.width = canvas.width * 2;
+          upscaledCanvas.height = canvas.height * 2;
+          const upscaledCtx = upscaledCanvas.getContext("2d");
+
+          // Draw the original image onto the larger canvas
+          upscaledCtx.drawImage(
+            canvas,
+            0,
+            0,
+            upscaledCanvas.width,
+            upscaledCanvas.height,
+          );
+          canvas.width = upscaledCanvas.width;
+          canvas.height = upscaledCanvas.height;
+          ctx.drawImage(upscaledCanvas, 0, 0);
+        }
+
         // Get the processed image as data URL
         const processedImageUrl = canvas.toDataURL("image/png");
-
-        // Save current image to previous versions if there is one
-        if (generatedImage) {
-          setPreviousVersions((prev) => [generatedImage, ...prev]);
-        }
 
         // Update the generated image
         setGeneratedImage(processedImageUrl);
@@ -161,8 +279,10 @@ const Home = () => {
           setRecentPrompts((prev) => [prompt, ...prev.slice(0, 4)]);
         }
 
-        // In a real app, you would save this to a database
         console.log("Generated new image with prompt:", prompt);
+
+        // Generate variants
+        generateVariants();
       };
 
       img.onload = function () {
@@ -176,13 +296,21 @@ const Home = () => {
           "https://images.unsplash.com/photo-1682687982501-1e58ab814714",
           "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe",
           "https://images.unsplash.com/photo-1579546929662-711aa81148cf",
+          "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
+          "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5",
+          "https://images.unsplash.com/photo-1501854140801-50d01698950b",
         ];
-        const randomFallback =
-          fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
+
+        // Deterministically select an image based on the prompt
+        const promptHash = prompt
+          .split("")
+          .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const imageIndex = promptHash % fallbackImages.length;
+        const selectedImage = fallbackImages[imageIndex];
 
         const fallbackImg = new Image();
         fallbackImg.crossOrigin = "anonymous";
-        fallbackImg.src = randomFallback;
+        fallbackImg.src = selectedImage;
 
         fallbackImg.onload = function () {
           handleImageLoaded(fallbackImg);
@@ -198,43 +326,52 @@ const Home = () => {
   // State for image loading
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Function to enhance prompt using local enhancement instead of Gemini API
+  // Function to enhance prompt using Gemini API with fallback
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) return;
 
     setIsEnhancingPrompt(true);
 
     try {
-      // Local enhancement instead of using Gemini API
-      const enhancementPhrases = [
-        "ultra detailed",
-        "professional lighting",
-        "cinematic composition",
-        "4K resolution",
-        "photorealistic",
-        "dramatic lighting",
-        "high quality",
-      ];
-
-      // Add random enhancement phrases that aren't already in the prompt
-      let enhancedPrompt = prompt;
-      enhancementPhrases.forEach((phrase) => {
-        if (
-          !enhancedPrompt.toLowerCase().includes(phrase.toLowerCase()) &&
-          Math.random() > 0.3
-        ) {
-          enhancedPrompt += ", " + phrase;
-        }
-      });
-
-      // Simulate API delay
-      setTimeout(() => {
+      // Try to use Gemini API first
+      try {
+        const enhancedPrompt = await enhancePromptWithGemini(prompt);
         setPrompt(enhancedPrompt);
-        setIsEnhancingPrompt(false);
-      }, 1000);
+      } catch (apiError) {
+        console.error("Gemini API error, using local enhancement:", apiError);
+        // Fallback to local enhancement if API fails
+        const enhancementPhrases = [
+          "ultra detailed",
+          "professional lighting",
+          "cinematic composition",
+          "4K resolution",
+          "photorealistic",
+          "dramatic lighting",
+          "high quality",
+          "masterpiece",
+          "intricate details",
+          "sharp focus",
+          "studio quality",
+          "perfect composition",
+        ];
+
+        // Add random enhancement phrases that aren't already in the prompt
+        let enhancedPrompt = prompt;
+        enhancementPhrases.forEach((phrase) => {
+          if (
+            !enhancedPrompt.toLowerCase().includes(phrase.toLowerCase()) &&
+            Math.random() > 0.3
+          ) {
+            enhancedPrompt += ", " + phrase;
+          }
+        });
+
+        setPrompt(enhancedPrompt);
+      }
     } catch (error) {
       console.error("Error enhancing prompt:", error);
       alert("Failed to enhance prompt. Please try again.");
+    } finally {
       setIsEnhancingPrompt(false);
     }
   };
@@ -244,20 +381,33 @@ const Home = () => {
     setIsAnalyzingImage(true);
 
     try {
-      // Instead of using Gemini API which is failing, use a fallback method
-      // Generate a generic prompt based on the image
-      const fallbackPrompt =
-        "A high-quality detailed image with professional lighting and composition. Ultra-realistic 4K resolution with cinematic feel.";
-      setPrompt(fallbackPrompt);
+      // Try to use Gemini API first
+      try {
+        const generatedPrompt = await analyzeImageWithGemini(imageUrl);
+        setPrompt(generatedPrompt);
+      } catch (apiError) {
+        console.error("Gemini API error, using fallback:", apiError);
+        // Fallback to predefined prompts if API fails
+        const imagePrompts = [
+          "A stunning landscape with dramatic lighting, mountains in the background and a serene lake in the foreground. Ultra-realistic 4K resolution with cinematic feel.",
+          "A detailed portrait with perfect lighting, shallow depth of field, and professional studio quality. High-resolution with natural skin tones.",
+          "An abstract digital artwork with vibrant colors and flowing shapes. High-contrast with sharp details and modern aesthetic.",
+          "A futuristic cityscape at night with neon lights, tall skyscrapers, and flying vehicles. Cyberpunk style with dramatic lighting.",
+          "A serene nature scene with sunlight filtering through trees, creating a magical atmosphere. Photorealistic quality with perfect composition.",
+        ];
+
+        // Select a random prompt from the list
+        const randomPrompt =
+          imagePrompts[Math.floor(Math.random() * imagePrompts.length)];
+        setPrompt(randomPrompt);
+      }
 
       // Auto-generate after analysis
-      setTimeout(() => {
-        handleGenerateImage();
-        setIsAnalyzingImage(false);
-      }, 1500);
+      handleGenerateImage();
     } catch (error) {
       console.error("Error analyzing image:", error);
       alert("Failed to analyze image. Using default prompt instead.");
+    } finally {
       setIsAnalyzingImage(false);
     }
   };
@@ -279,21 +429,48 @@ const Home = () => {
     setIsAnalyzingImage(true);
 
     try {
-      // Use a generic prompt instead of Gemini API
-      const genericPrompt =
-        "A professional digital artwork based on a hand-drawn sketch, with detailed elements, vibrant colors, and professional composition. High-quality rendering with smooth lines and textures.";
+      // Try to use Gemini API first
+      try {
+        const generatedPrompt = await generatePromptFromDrawing(drawingDataUrl);
+        setPrompt(generatedPrompt);
+      } catch (apiError) {
+        console.error("Gemini API error, using fallback:", apiError);
+        // Fallback to predefined prompts if API fails
+        const drawingPrompts = [
+          "A professional digital artwork based on a hand-drawn sketch, with detailed elements, vibrant colors, and professional composition. High-quality rendering with smooth lines and textures.",
+          "A polished illustration derived from a sketch, with enhanced details, professional coloring, and artistic style. Clean lines and perfect proportions.",
+          "A refined digital painting based on a rough sketch, with beautiful color gradients, detailed textures, and professional lighting effects.",
+          "An artistic rendering of a hand-drawn concept, transformed into a professional illustration with perfect proportions and vivid colors.",
+          "A sketch transformed into a masterful digital artwork, with enhanced details, dramatic lighting, and professional composition.",
+        ];
 
-      setPrompt(genericPrompt);
-      setShowDrawingTab(false); // Switch back to main tab
+        // Select a random prompt from the list
+        const randomPrompt =
+          drawingPrompts[Math.floor(Math.random() * drawingPrompts.length)];
+        setPrompt(randomPrompt);
+      }
 
-      // Simulate API delay then generate
-      setTimeout(() => {
-        handleGenerateImage();
-        setIsAnalyzingImage(false);
-      }, 1500);
+      // Show success message
+      const successMessage = document.createElement("div");
+      successMessage.style.position = "fixed";
+      successMessage.style.top = "20px";
+      successMessage.style.left = "50%";
+      successMessage.style.transform = "translateX(-50%)";
+      successMessage.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
+      successMessage.style.color = "white";
+      successMessage.style.padding = "10px 20px";
+      successMessage.style.borderRadius = "5px";
+      successMessage.style.zIndex = "9999";
+      successMessage.textContent = "Drawing processed successfully!";
+      document.body.appendChild(successMessage);
+      setTimeout(() => document.body.removeChild(successMessage), 3000);
+
+      setActiveFeature("text-to-image"); // Switch back to main tab
+      handleGenerateImage();
     } catch (error) {
       console.error("Error generating from drawing:", error);
       alert("Failed to process drawing. Using default prompt instead.");
+    } finally {
       setIsAnalyzingImage(false);
     }
   };
@@ -349,18 +526,109 @@ const Home = () => {
       } else {
         // Fallback for browsers that don't support Web Share API
         alert(
-          "शेयरिंग आपके ब्राउज़र में उपलब्ध नहीं है। इमेज को डाउनलोड करके शेयर करें।",
+          "Sharing is not available in your browser. Please download the image and share it manually.",
         );
       }
     } catch (error) {
       console.error("Error sharing image:", error);
-      alert("इमेज शेयर करने में त्रुटि हुई");
+      alert("Error sharing image");
     }
   };
 
   const handleModify = () => {
-    // Implement modify functionality
-    console.log("Modifying image settings...");
+    // Implement modify functionality to edit the current image
+    if (!generatedImage) return;
+
+    // Save current image to history before modifying
+    if (generatedImage) {
+      setPreviousVersions((prev) => [generatedImage, ...prev]);
+    }
+
+    // Set loading state
+    setIsGenerating(true);
+
+    // Apply modifications based on current settings
+    setTimeout(() => {
+      handleGenerateImage();
+    }, 500);
+  };
+
+  // Function to create variations of the current image
+  const handleCreateVariation = () => {
+    if (!generatedImage || !prompt) return;
+
+    // Save current image to history
+    setPreviousVersions((prev) => [generatedImage, ...prev]);
+
+    // Create 3 variations with different seeds and slight prompt modifications
+    const variations = [];
+
+    for (let i = 0; i < 3; i++) {
+      // Generate a new random seed for each variation
+      const newSeed = Math.floor(Math.random() * 1000000).toString();
+      setSeed(newSeed);
+
+      // Slightly modify some parameters for each variation
+      const variationModifiers = [
+        { guidanceScale: Math.max(1, guidanceScale - 1), saturation: 110 },
+        { guidanceScale: Math.min(20, guidanceScale + 1), contrast: 120 },
+        { steps: Math.min(150, steps + 10), brightness: 105 },
+      ];
+
+      // Apply the modifier for this variation
+      const modifier = variationModifiers[i];
+      if (modifier.guidanceScale) setGuidanceScale(modifier.guidanceScale);
+      if (modifier.steps) setSteps(modifier.steps);
+
+      // Generate the variation
+      handleGenerateImage();
+
+      // Store the variation
+      if (generatedImage) {
+        variations.push(generatedImage);
+      }
+    }
+
+    // Reset parameters to original values
+    setGuidanceScale(7.5);
+    setSteps(30);
+
+    // Add variations to history
+    if (variations.length > 0) {
+      setPreviousVersions((prev) => [...variations, ...prev]);
+    }
+  };
+
+  // Function to upscale the current image
+  const handleUpscale = () => {
+    if (!generatedImage) return;
+
+    // Save current image and dimensions
+    setPreviousVersions((prev) => [generatedImage, ...prev]);
+    const currentDimensions = { ...dimensions };
+
+    // Double the dimensions for upscaling
+    setDimensions({
+      width: currentDimensions.width * 2,
+      height: currentDimensions.height * 2,
+    });
+
+    // Set upscale feature
+    setFeatures((prev) => ({
+      ...prev,
+      upscale: true,
+    }));
+
+    // Generate with the same prompt but larger dimensions
+    handleGenerateImage();
+
+    // Reset upscale feature after generation
+    setTimeout(() => {
+      setFeatures((prev) => ({
+        ...prev,
+        upscale: false,
+      }));
+    }, 1000);
   };
 
   const handleSelectHistoryImage = (image: GeneratedImage) => {
@@ -399,12 +667,12 @@ const Home = () => {
       } else {
         // Fallback for browsers that don't support Web Share API
         alert(
-          "शेयरिंग आपके ब्राउज़र में उपलब्ध नहीं है। इमेज को डाउनलोड करके शेयर करें।",
+          "Sharing is not available in your browser. Please download the image and share it manually.",
         );
       }
     } catch (error) {
       console.error("Error sharing image:", error);
-      alert("इमेज शेयर करने में त्रुटि हुई");
+      alert("Error sharing image");
     }
   };
 
@@ -418,19 +686,23 @@ const Home = () => {
     }
   };
 
-  // Handle theme change
-  const handleThemeChange = (theme: "light" | "dark" | "evening") => {
-    setCurrentTheme(theme);
-    // Apply theme class to document if needed
-    document.documentElement.classList.remove("dark");
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    }
+  // Handle theme change - only using dark theme
+  const handleThemeChange = (theme: string) => {
+    setCurrentTheme("dark");
+    // Apply dark theme class to document
+    document.documentElement.classList.add("dark");
+    // Save theme preference to localStorage
+    localStorage.setItem("theme-preference", "dark");
   };
+
+  // Always use dark theme
+  useEffect(() => {
+    handleThemeChange("dark");
+  }, []);
 
   // Add generated image to history when it's loaded and not generating
   useEffect(() => {
-    if (generatedImage && imageLoaded && !isGenerating) {
+    if (generatedImage && !isGenerating) {
       const newImage = {
         id: Date.now().toString(),
         imageUrl: generatedImage,
@@ -447,7 +719,14 @@ const Home = () => {
 
       setImageHistory((prev) => [newImage, ...prev]);
     }
-  }, [generatedImage, imageLoaded, isGenerating]);
+  }, [generatedImage, isGenerating]);
+
+  // Clear redo stack when new image is generated
+  useEffect(() => {
+    if (isGenerating) {
+      setRedoStack([]);
+    }
+  }, [isGenerating]);
 
   // Function to handle undo/redo
   const handleUndo = () => {
@@ -474,176 +753,588 @@ const Home = () => {
   };
 
   const handleRedo = () => {
-    // Implementation would be similar to undo but in reverse direction
-    console.log("Redo functionality would be implemented here");
+    if (redoStack.length > 0) {
+      // Get the last redo item
+      const redoItem = redoStack[redoStack.length - 1];
+
+      // Save current image to undo stack
+      if (generatedImage) {
+        setPreviousVersions((prev) => [generatedImage, ...prev]);
+      }
+
+      // Set the redo item as current image
+      setGeneratedImage(redoItem);
+
+      // Remove the used item from redo stack
+      setRedoStack((prev) => prev.slice(0, -1));
+    }
   };
 
-  return (
-    <div
-      className={`min-h-screen ${currentTheme === "dark" ? "dark bg-gray-900" : currentTheme === "evening" ? "bg-indigo-900" : "bg-gray-50"}`}
-    >
-      <LoadingOverlay
-        isVisible={isAnalyzingImage || isEnhancingPrompt}
-        message={
-          isAnalyzingImage ? "Processing image..." : "Enhancing prompt..."
+  // Generate image variants
+  const generateVariants = () => {
+    if (!generatedImage) return;
+
+    // Create 6 variants with different filters
+    const variantFilters = [
+      { brightness: 110, contrast: 120, saturation: 130, hue: 15 },
+      { brightness: 90, contrast: 110, saturation: 80, hue: -15 },
+      { brightness: 100, contrast: 130, saturation: 110, hue: 0, sepia: 30 },
+      { brightness: 105, contrast: 95, saturation: 120, hue: 30 },
+      { brightness: 95, contrast: 125, saturation: 90, hue: -30, sepia: 15 },
+      {
+        brightness: 115,
+        contrast: 115,
+        saturation: 105,
+        hue: 5,
+        grayscale: 20,
+      },
+    ];
+
+    const newVariants: string[] = [];
+
+    // Create a temporary canvas for processing
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Load the current image
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = generatedImage;
+
+    img.onload = () => {
+      // Set canvas dimensions to match image
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      variantFilters.forEach((filterSet) => {
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw original image
+        ctx.drawImage(img, 0, 0);
+
+        // Get image data for manipulation
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Apply filter effects manually
+        for (let i = 0; i < data.length; i += 4) {
+          // Apply brightness
+          const brightnessRatio = filterSet.brightness / 100;
+          data[i] = Math.min(255, data[i] * brightnessRatio);
+          data[i + 1] = Math.min(255, data[i + 1] * brightnessRatio);
+          data[i + 2] = Math.min(255, data[i + 2] * brightnessRatio);
+
+          // Apply contrast
+          const contrastFactor = (filterSet.contrast / 100) * 2 - 1;
+          for (let j = 0; j < 3; j++) {
+            data[i + j] = Math.min(
+              255,
+              Math.max(0, (data[i + j] - 128) * (1 + contrastFactor) + 128),
+            );
+          }
+
+          // Apply saturation
+          const saturationRatio = filterSet.saturation / 100;
+          const gray =
+            0.2989 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          data[i] = Math.min(
+            255,
+            Math.max(0, gray + (data[i] - gray) * saturationRatio),
+          );
+          data[i + 1] = Math.min(
+            255,
+            Math.max(0, gray + (data[i + 1] - gray) * saturationRatio),
+          );
+          data[i + 2] = Math.min(
+            255,
+            Math.max(0, gray + (data[i + 2] - gray) * saturationRatio),
+          );
+
+          // Apply hue rotation if specified
+          if (filterSet.hue) {
+            // Hue rotation is complex, simplified implementation
+            const hueRotation = (filterSet.hue / 360) * 2 * Math.PI;
+            const U = Math.cos(hueRotation);
+            const W = Math.sin(hueRotation);
+
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            data[i] = Math.min(
+              255,
+              Math.max(
+                0,
+                (0.299 + 0.701 * U + 0.168 * W) * r +
+                  (0.587 - 0.587 * U + 0.33 * W) * g +
+                  (0.114 - 0.114 * U - 0.497 * W) * b,
+              ),
+            );
+            data[i + 1] = Math.min(
+              255,
+              Math.max(
+                0,
+                (0.299 - 0.299 * U - 0.328 * W) * r +
+                  (0.587 + 0.413 * U + 0.035 * W) * g +
+                  (0.114 - 0.114 * U + 0.292 * W) * b,
+              ),
+            );
+            data[i + 2] = Math.min(
+              255,
+              Math.max(
+                0,
+                (0.299 - 0.3 * U + 1.25 * W) * r +
+                  (0.587 - 0.588 * U - 1.05 * W) * g +
+                  (0.114 + 0.886 * U - 0.203 * W) * b,
+              ),
+            );
+          }
+
+          // Apply sepia if specified
+          if (filterSet.sepia) {
+            const sepiaIntensity = filterSet.sepia / 100;
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            data[i] = Math.min(
+              255,
+              r * (1 - sepiaIntensity) +
+                sepiaIntensity * (r * 0.393 + g * 0.769 + b * 0.189),
+            );
+            data[i + 1] = Math.min(
+              255,
+              g * (1 - sepiaIntensity) +
+                sepiaIntensity * (r * 0.349 + g * 0.686 + b * 0.168),
+            );
+            data[i + 2] = Math.min(
+              255,
+              b * (1 - sepiaIntensity) +
+                sepiaIntensity * (r * 0.272 + g * 0.534 + b * 0.131),
+            );
+          }
+
+          // Apply grayscale if specified
+          if (filterSet.grayscale) {
+            const grayscaleIntensity = filterSet.grayscale / 100;
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            const grayValue = 0.2989 * r + 0.587 * g + 0.114 * b;
+
+            data[i] = Math.round(
+              r * (1 - grayscaleIntensity) + grayValue * grayscaleIntensity,
+            );
+            data[i + 1] = Math.round(
+              g * (1 - grayscaleIntensity) + grayValue * grayscaleIntensity,
+            );
+            data[i + 2] = Math.round(
+              b * (1 - grayscaleIntensity) + grayValue * grayscaleIntensity,
+            );
+          }
         }
-        theme={currentTheme}
-      />
-      <Header
-        title="AI Image Generator"
-        onThemeChange={handleThemeChange}
-        currentTheme={currentTheme}
-        onOpenHelp={() => setShowHelpDialog(true)}
-        onOpenSettings={() => setShowSettingsDialog(true)}
-        onOpenProfile={() => setShowProfileDialog(true)}
-      />
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="space-y-8">
-          <Tabs defaultValue="input" className="w-full">
-            <TabsList className="mb-4 w-full justify-start">
-              <TabsTrigger
-                value="input"
-                onClick={() => setShowDrawingTab(false)}
-              >
-                Text Input
-              </TabsTrigger>
-              <TabsTrigger
-                value="drawing"
-                onClick={() => setShowDrawingTab(true)}
-              >
-                Drawing
-              </TabsTrigger>
-            </TabsList>
+        // Put modified image data back to canvas
+        ctx.putImageData(imageData, 0, 0);
 
-            <TabsContent value="input" className="space-y-8">
-              {/* Prompt Input Section */}
-              <section>
-                <PromptInputSection
-                  prompt={prompt}
-                  onPromptChange={setPrompt}
-                  theme={currentTheme}
-                  recentPrompts={recentPrompts}
-                  onEnhancePrompt={handleEnhancePrompt}
-                  onImageUpload={handleImageUpload}
-                />
-              </section>
-            </TabsContent>
+        // Get data URL and add to variants
+        const variantUrl = canvas.toDataURL("image/png");
+        newVariants.push(variantUrl);
+      });
 
-            <TabsContent value="drawing" className="space-y-8">
-              {/* Drawing Canvas */}
-              <section>
-                <DrawingCanvas
-                  onGenerateFromDrawing={handleGenerateFromDrawing}
-                  theme={currentTheme}
-                />
-              </section>
-            </TabsContent>
-          </Tabs>
+      // Update variants state
+      setVariants(newVariants);
+    };
+  };
 
-          {/* Customization Panel */}
-          <section>
-            <CustomizationPanel
-              selectedStyle={selectedStyle}
-              dimensions={dimensions}
-              resolution={resolution}
-              aspectRatio={aspectRatio}
-              selectedModel={selectedModel}
-              selectedSampler={selectedSampler}
-              steps={steps}
-              seed={seed}
-              negativePrompt={negativePrompt}
-              guidanceScale={guidanceScale}
-              features={features}
-              theme={currentTheme}
-              onStyleChange={handleStyleChange}
-              onDimensionsChange={handleDimensionsChange}
-              onResolutionChange={handleResolutionChange}
-              onAspectRatioChange={handleAspectRatioChange}
-              onModelChange={setSelectedModel}
-              onSamplerChange={setSelectedSampler}
-              onStepsChange={setSteps}
-              onSeedChange={setSeed}
-              onNegativePromptChange={setNegativePrompt}
-              onGuidanceScaleChange={setGuidanceScale}
-              onToggleFeature={(feature, enabled) => {
-                setFeatures((prev) => ({
-                  ...prev,
-                  [feature]: enabled,
-                }));
-              }}
-            />
-          </section>
+  const [activeFeature, setActiveFeature] = useState("text-to-image");
 
-          {/* Generate Button */}
-          {!showDrawingTab && (
-            <section className="flex justify-center">
-              <GenerateButton
-                onClick={handleGenerateImage}
-                onFastGenerate={() => {
-                  setCredits((prev) => prev - 1);
-                  handleGenerateImage();
-                }}
-                isLoading={
-                  isGenerating || isEnhancingPrompt || isAnalyzingImage
-                }
-                disabled={
-                  !prompt.trim() ||
-                  isGenerating ||
-                  isEnhancingPrompt ||
-                  isAnalyzingImage
-                }
-                theme={currentTheme}
-                credits={credits}
-                estimatedTime={steps * 0.5}
-                text={
-                  isEnhancingPrompt
-                    ? "Enhancing Prompt..."
-                    : isAnalyzingImage
-                      ? "Analyzing Image..."
-                      : "Generate Image"
-                }
-              />
-            </section>
-          )}
-
-          {/* Results Display */}
-          <section>
-            <ResultsDisplay
-              generatedImage={generatedImage}
-              previousVersions={previousVersions}
-              isLoading={isGenerating}
-              onDownload={handleDownload}
-              onShare={handleShare}
-              onModify={handleModify}
-              onCopy={() => navigator.clipboard.writeText(generatedImage)}
-              onFullscreen={() => console.log("Opening fullscreen view")}
-              onVariation={() => console.log("Creating variation")}
-              onUpscale={() => console.log("Upscaling image")}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              onDelete={() => {
-                setGeneratedImage("");
-                console.log("Deleting image");
-              }}
-              theme={currentTheme}
-              canUndo={previousVersions.length > 0}
-              canRedo={false} // Implement proper redo functionality later
-            />
-          </section>
-
-          {/* Image History Gallery */}
-          <section>
-            <ImageHistoryGallery
-              images={imageHistory}
-              onSelectImage={handleSelectHistoryImage}
-              onDownloadImage={handleDownloadHistoryImage}
-              onShareImage={handleShareHistoryImage}
-              onEditImage={handleEditHistoryImage}
-            />
-          </section>
+  return (
+    <div className="min-h-screen dark bg-black flex flex-col md:flex-row">
+      {/* Mobile Feature Selector */}
+      <div className="md:hidden bg-black text-white p-2 border-b border-gray-800 overflow-x-auto">
+        <div className="flex space-x-2">
+          {[
+            { id: "text-to-image", name: "Text to Image", icon: "📝" },
+            { id: "basic-drawing", name: "Drawing", icon: "✏️" },
+            { id: "styles", name: "Styles", icon: "🎨" },
+            { id: "artistic", name: "Filters", icon: "🖼️" },
+            { id: "3d-model", name: "3D Model", icon: "🧊" },
+            { id: "history", name: "History", icon: "📚" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveFeature(item.id)}
+              className={`px-3 py-2 rounded-md text-sm whitespace-nowrap ${activeFeature === item.id ? "bg-gray-800" : "bg-gray-900"}`}
+            >
+              <span className="mr-1">{item.icon}</span>
+              {item.name}
+            </button>
+          ))}
         </div>
-      </main>
+      </div>
+
+      {/* Features Sidebar - Hidden on mobile, shown as a horizontal menu */}
+      <div className="md:block hidden">
+        <Sidebar
+          onSelectFeature={setActiveFeature}
+          activeFeature={activeFeature}
+        />
+      </div>
+
+      <div className="flex-1 flex flex-col min-h-screen">
+        <LoadingOverlay
+          isVisible={isAnalyzingImage || isEnhancingPrompt}
+          message={
+            isAnalyzingImage ? "Processing image..." : "Enhancing prompt..."
+          }
+          theme={currentTheme}
+        />
+        <div className="sticky top-0 z-50">
+          <BetaVersionBanner theme="dark" />
+          <Header
+            title="AI Image Generator"
+            onThemeChange={handleThemeChange}
+            currentTheme="dark"
+            onOpenHelp={() => setShowChatbot(true)}
+            onOpenSettings={() => setShowSettingsDialog(true)}
+            onOpenProfile={() => setShowHistorySidebar(!showHistorySidebar)}
+          />
+        </div>
+
+        <main className="container mx-auto px-2 md:px-4 py-4 md:py-8 max-w-7xl">
+          <div className="space-y-8">
+            {/* Content based on active feature */}
+            {activeFeature === "text-to-image" && (
+              <div className="space-y-8">
+                {/* Prompt Input Section */}
+                <section>
+                  <PromptInputSection
+                    prompt={prompt}
+                    onPromptChange={setPrompt}
+                    theme="dark"
+                    recentPrompts={[]}
+                    onEnhancePrompt={handleEnhancePrompt}
+                    onImageUpload={handleImageUpload}
+                  />
+                </section>
+              </div>
+            )}
+
+            {activeFeature === "basic-drawing" && (
+              <div className="space-y-8">
+                {/* Basic Drawing Canvas */}
+                <section>
+                  <DrawingCanvas
+                    onGenerateFromDrawing={handleGenerateFromDrawing}
+                    theme="dark"
+                  />
+                </section>
+              </div>
+            )}
+
+            {activeFeature === "advanced-drawing" && (
+              <div className="space-y-8">
+                {/* Advanced Drawing Tools */}
+                <section>
+                  <ErrorBoundary>
+                    <Suspense
+                      fallback={
+                        <div className="w-full h-64 flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                        </div>
+                      }
+                    >
+                      <AdvancedDrawingTools
+                        onGenerateFromDrawing={handleGenerateFromDrawing}
+                        theme="dark"
+                      />
+                    </Suspense>
+                  </ErrorBoundary>
+                </section>
+              </div>
+            )}
+
+            {activeFeature === "styles" && (
+              <div className="space-y-8">
+                {/* AI Style Presets */}
+                <section>
+                  <ErrorBoundary>
+                    <Suspense
+                      fallback={
+                        <div className="w-full h-64 flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                        </div>
+                      }
+                    >
+                      <AIStylePresets
+                        onSelectPreset={(preset) => {
+                          setPrompt(preset.prompt);
+                          setSelectedStyle(preset.id);
+                        }}
+                        theme="dark"
+                      />
+                    </Suspense>
+                  </ErrorBoundary>
+                </section>
+              </div>
+            )}
+
+            {activeFeature === "artistic" && (
+              <div className="space-y-8">
+                {/* Advanced Image Filters - Artistic Tab */}
+                <section>
+                  <ErrorBoundary>
+                    <Suspense
+                      fallback={
+                        <div className="w-full h-64 flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                        </div>
+                      }
+                    >
+                      <AdvancedImageFilters
+                        onApplyFilter={(filterType, settings) => {
+                          try {
+                            console.log(
+                              "Applying filters:",
+                              filterType,
+                              settings,
+                            );
+                            if (generatedImage) {
+                              setPreviousVersions((prev) => [
+                                generatedImage,
+                                ...prev,
+                              ]);
+                              handleModify();
+                            }
+                          } catch (error) {
+                            console.error("Error applying filters:", error);
+                            alert(
+                              "There was an error applying filters. Please try again.",
+                            );
+                          }
+                        }}
+                        theme="dark"
+                      />
+                    </Suspense>
+                  </ErrorBoundary>
+                </section>
+              </div>
+            )}
+
+            {activeFeature === "3d-model" && (
+              <div className="space-y-8">
+                {/* 3D Model Viewer */}
+                <section>
+                  <ErrorBoundary>
+                    <Suspense
+                      fallback={
+                        <div className="w-full h-64 flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                        </div>
+                      }
+                    >
+                      <ThreeDModelViewer
+                        theme="dark"
+                        onExport={(format) => {
+                          console.log(`Exporting 3D model as ${format}`);
+                        }}
+                      />
+                    </Suspense>
+                  </ErrorBoundary>
+                </section>
+              </div>
+            )}
+
+            {activeFeature === "history" && (
+              <div className="space-y-8">
+                {/* Image History Gallery */}
+                <section>
+                  <ImageHistoryGallery
+                    images={imageHistory}
+                    onSelectImage={handleSelectHistoryImage}
+                    onDownloadImage={handleDownloadHistoryImage}
+                    onShareImage={handleShareHistoryImage}
+                    onEditImage={handleEditHistoryImage}
+                  />
+                </section>
+              </div>
+            )}
+
+            {/* Customization Panel - only show for text-to-image */}
+            {activeFeature === "text-to-image" && (
+              <section>
+                <CustomizationPanel
+                  selectedStyle={selectedStyle}
+                  dimensions={dimensions}
+                  resolution={resolution}
+                  aspectRatio={aspectRatio}
+                  selectedModel={selectedModel}
+                  selectedSampler={selectedSampler}
+                  steps={steps}
+                  seed={seed}
+                  negativePrompt={negativePrompt}
+                  guidanceScale={guidanceScale}
+                  features={features}
+                  theme="dark"
+                  onStyleChange={handleStyleChange}
+                  onDimensionsChange={handleDimensionsChange}
+                  onResolutionChange={handleResolutionChange}
+                  onAspectRatioChange={handleAspectRatioChange}
+                  onModelChange={setSelectedModel}
+                  onSamplerChange={setSelectedSampler}
+                  onStepsChange={setSteps}
+                  onSeedChange={setSeed}
+                  onNegativePromptChange={setNegativePrompt}
+                  onGuidanceScaleChange={setGuidanceScale}
+                  onToggleFeature={(feature, enabled) => {
+                    setFeatures((prev) => ({
+                      ...prev,
+                      [feature]: enabled,
+                    }));
+                  }}
+                />
+              </section>
+            )}
+
+            {/* Generate Button - only show for text-to-image */}
+            {activeFeature === "text-to-image" && (
+              <section className="flex justify-center">
+                <GenerateButton
+                  onClick={handleGenerateImage}
+                  onFastGenerate={() => {
+                    setCredits((prev) => prev - 1);
+                    handleGenerateImage();
+                  }}
+                  isLoading={
+                    isGenerating || isEnhancingPrompt || isAnalyzingImage
+                  }
+                  disabled={
+                    !prompt.trim() ||
+                    isGenerating ||
+                    isEnhancingPrompt ||
+                    isAnalyzingImage
+                  }
+                  theme="dark"
+                  credits={credits}
+                  estimatedTime={steps * 0.5}
+                  text={
+                    isEnhancingPrompt
+                      ? "Enhancing Prompt..."
+                      : isAnalyzingImage
+                        ? "Analyzing Image..."
+                        : "Generate Image"
+                  }
+                />
+              </section>
+            )}
+
+            {/* Results Display - always show */}
+            {generatedImage && (
+              <section>
+                <ResultsDisplay
+                  generatedImage={generatedImage}
+                  previousVersions={previousVersions}
+                  isLoading={isGenerating}
+                  onDownload={handleDownload}
+                  onShare={handleShare}
+                  onModify={handleModify}
+                  onCopy={() => navigator.clipboard.writeText(generatedImage)}
+                  onFullscreen={() => {
+                    if (!generatedImage) return;
+
+                    // Create a fullscreen modal with the image
+                    const img = new Image();
+                    img.src = generatedImage;
+                    img.style.maxWidth = "100%";
+                    img.style.maxHeight = "100vh";
+                    img.style.objectFit = "contain";
+
+                    const modal = document.createElement("div");
+                    modal.style.position = "fixed";
+                    modal.style.top = "0";
+                    modal.style.left = "0";
+                    modal.style.width = "100%";
+                    modal.style.height = "100%";
+                    modal.style.backgroundColor = "rgba(0,0,0,0.9)";
+                    modal.style.display = "flex";
+                    modal.style.justifyContent = "center";
+                    modal.style.alignItems = "center";
+                    modal.style.zIndex = "9999";
+                    modal.style.cursor = "pointer";
+
+                    modal.onclick = () => {
+                      document.body.removeChild(modal);
+                    };
+
+                    modal.appendChild(img);
+                    document.body.appendChild(modal);
+                  }}
+                  onVariation={handleCreateVariation}
+                  onUpscale={handleUpscale}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  onDelete={() => {
+                    setGeneratedImage("");
+                    console.log("Deleting image");
+                  }}
+                  theme="dark"
+                  canUndo={previousVersions.length > 0}
+                  canRedo={redoStack.length > 0}
+                />
+              </section>
+            )}
+
+            {/* Image History Gallery - only show on history tab */}
+          </div>
+        </main>
+      </div>
+
+      {/* Floating Chatbot */}
+      {showChatbot && (
+        <div
+          className="fixed z-50 w-[90vw] md:w-80 h-[500px] shadow-xl rounded-lg overflow-hidden"
+          style={{
+            ...chatPosition,
+            right: window.innerWidth < 768 ? "5%" : chatPosition.right,
+            left: window.innerWidth < 768 ? "5%" : "auto",
+          }}
+        >
+          <ChatbotHelp
+            onClose={() => setShowChatbot(false)}
+            theme={currentTheme}
+          />
+        </div>
+      )}
+
+      {/* Chatbot Trigger Button */}
+      {!showChatbot && (
+        <button
+          onClick={() => setShowChatbot(true)}
+          className={`fixed z-50 bottom-5 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-lg ${currentTheme === "dark" ? "bg-gray-800" : currentTheme === "evening" ? "bg-indigo-800" : "bg-white"}`}
+        >
+          <div className="relative">
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`${currentTheme === "dark" || currentTheme === "evening" ? "text-white" : "text-gray-900"}`}
+            >
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+        </button>
+      )}
     </div>
   );
 };

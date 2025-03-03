@@ -86,7 +86,7 @@ const CustomizationPanel = ({
     upscale: false,
     faceCorrection: false,
   },
-  theme = "light",
+  theme = "dark",
 }: CustomizationPanelProps) => {
   const stylePresets = [
     { value: "realistic", label: "Realistic" },
@@ -165,9 +165,9 @@ const CustomizationPanel = ({
   const getBackgroundColor = () => {
     switch (theme) {
       case "dark":
-        return "bg-gray-800 border-gray-700";
+        return "bg-gray-900 border-gray-800";
       case "evening":
-        return "bg-indigo-800 border-indigo-700";
+        return "bg-indigo-900/90 backdrop-blur-sm border-indigo-800";
       default:
         return "bg-white border-gray-200";
     }
@@ -197,9 +197,9 @@ const CustomizationPanel = ({
   const getInputBgColor = () => {
     switch (theme) {
       case "dark":
-        return "bg-gray-700 border-gray-600";
+        return "bg-gray-800 border-gray-700";
       case "evening":
-        return "bg-indigo-700 border-indigo-600";
+        return "bg-indigo-800 border-indigo-700";
       default:
         return "bg-gray-50 border-gray-300";
     }
@@ -218,14 +218,16 @@ const CustomizationPanel = ({
 
   return (
     <div
-      className={`w-full p-6 rounded-xl border ${getBackgroundColor()} shadow-lg transition-colors duration-200`}
+      className={`w-full p-4 md:p-6 rounded-xl border ${getBackgroundColor()} shadow-lg transition-colors duration-200`}
     >
       <h2 className={`text-xl font-semibold mb-4 ${getTextColor()}`}>
         Image Customization
       </h2>
 
       <Tabs defaultValue="style" className="w-full">
-        <TabsList className={`mb-4 w-full justify-start ${getTabsColor()}`}>
+        <TabsList
+          className={`mb-4 w-full justify-start overflow-x-auto flex-wrap ${getTabsColor()}`}
+        >
           <TabsTrigger value="style" className="flex items-center gap-1">
             <Palette size={16} />
             Style

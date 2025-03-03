@@ -30,9 +30,9 @@ const DrawingCanvas = ({
   const getBackgroundColor = () => {
     switch (theme) {
       case "dark":
-        return "bg-gray-800 border-gray-700";
+        return "bg-gray-900 border-gray-800";
       case "evening":
-        return "bg-indigo-800 border-indigo-700";
+        return "bg-indigo-900/90 backdrop-blur-sm border-indigo-800";
       default:
         return "bg-white border-gray-200";
     }
@@ -96,7 +96,18 @@ const DrawingCanvas = ({
     // Fill canvas with background color
     context.fillStyle = getCanvasBgColor();
     context.fillRect(0, 0, canvas.width, canvas.height);
-  }, []);
+
+    // Add touch event handlers for mobile support
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
+
+    return () => {
+      canvas.removeEventListener("touchstart", handleTouchStart);
+      canvas.removeEventListener("touchmove", handleTouchMove);
+      canvas.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [color, brushSize]);
 
   // Update context when tool or color changes
   useEffect(() => {
@@ -134,6 +145,44 @@ const DrawingCanvas = ({
     contextRef.current.beginPath();
     contextRef.current.moveTo(x, y);
     setIsDrawing(true);
+  };
+
+  // Touch event handlers for mobile support
+  const handleTouchStart = (e: TouchEvent) => {
+    e.preventDefault();
+    if (!canvasRef.current || !contextRef.current) return;
+
+    const touch = e.touches[0];
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+
+    contextRef.current.beginPath();
+    contextRef.current.moveTo(x, y);
+    setIsDrawing(true);
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    e.preventDefault();
+    if (!isDrawing || !contextRef.current || !canvasRef.current) return;
+
+    const touch = e.touches[0];
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+
+    contextRef.current.lineTo(x, y);
+    contextRef.current.stroke();
+    setHasDrawing(true);
+  };
+
+  const handleTouchEnd = (e: TouchEvent) => {
+    e.preventDefault();
+    if (!contextRef.current) return;
+    contextRef.current.closePath();
+    setIsDrawing(false);
   };
 
   const draw = (
@@ -202,9 +251,9 @@ const DrawingCanvas = ({
 
   return (
     <div
-      className={`w-full p-6 rounded-xl border ${getBackgroundColor()} shadow-lg transition-colors duration-200`}
+      className={`w-full p-4 md:p-6 rounded-xl border ${getBackgroundColor()} shadow-lg transition-colors duration-200`}
     >
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
         <h2 className={`text-xl font-semibold ${getTextColor()}`}>
           Draw Your Idea
         </h2>
@@ -290,7 +339,7 @@ const DrawingCanvas = ({
         </p>
       </div>
 
-      <div className="flex justify-between mt-4">
+      <div className="flex flex-col md:flex-row justify-between mt-4 gap-2">
         <Button
           variant="outline"
           onClick={clearCanvas}
