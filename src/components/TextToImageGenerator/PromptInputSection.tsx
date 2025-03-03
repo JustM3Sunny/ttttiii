@@ -170,7 +170,7 @@ const PromptInputSection = ({
             <textarea
               id="prompt"
               className={`w-full h-32 p-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${getInputBgColor()} ${getTextColor()} placeholder:${getMutedTextColor()}`}
-              placeholder="Describe the image you want to generate..."
+              placeholder="Describe your image here..."
               value={prompt}
               onChange={(e) => onPromptChange(e.target.value)}
             />

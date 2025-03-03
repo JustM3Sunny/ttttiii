@@ -33,7 +33,7 @@ const BetaVersionBanner = ({ theme = "dark" }: BetaVersionBannerProps) => {
     >
       <AlertTriangle className="h-4 w-4 mr-2 text-yellow-400" />
       <p className={`text-sm font-medium ${getTextColor()}`}>
-        Beta Version: This application is in development. Some features may be
+        Beta Version: AI Text-to-Image Generator | Some features may be
         unstable.
       </p>
     </div>

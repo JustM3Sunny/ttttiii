@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
+import PaymentPlans from "./PaymentPlans";
 import CustomizationPanel from "./TextToImageGenerator/CustomizationPanel";
 import GenerateButton from "./TextToImageGenerator/GenerateButton";
 import ResultsDisplay from "./TextToImageGenerator/ResultsDisplay";
@@ -10,6 +11,7 @@ import LoadingOverlay from "./TextToImageGenerator/LoadingOverlay";
 import ChatbotHelp from "./TextToImageGenerator/ChatbotHelp";
 import HistorySidebar from "./TextToImageGenerator/HistorySidebar";
 import Sidebar from "./Sidebar";
+import AdminPanel from "./AdminPanel";
 import BetaVersionBanner from "./BetaVersionBanner";
 import ErrorBoundary from "./ErrorBoundary";
 
@@ -34,6 +36,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   enhancePromptWithGemini,
@@ -56,24 +59,6 @@ interface GeneratedImage {
 }
 
 const Home = () => {
-  const [currentTheme, setCurrentTheme] = useState<string>("dark");
-  const [showHelpDialog, setShowHelpDialog] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [showProfileDialog, setShowProfileDialog] = useState(false);
-  const [showChatbot, setShowChatbot] = useState(false);
-  const [chatPosition, setChatPosition] = useState({
-    right: "20px",
-    bottom: "20px",
-  });
-  const [showHistorySidebar, setShowHistorySidebar] = useState(false);
-  const [credits, setCredits] = useState(10);
-  const [recentPrompts, setRecentPrompts] = useState<string[]>([]);
-  const [previousVersions, setPreviousVersions] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
-  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
-  const [showDrawingTab, setShowDrawingTab] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [prompt, setPrompt] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("realistic");
   const [dimensions, setDimensions] = useState({ width: 512, height: 512 });
@@ -88,6 +73,55 @@ const Home = () => {
   const [seed, setSeed] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
   const [guidanceScale, setGuidanceScale] = useState(7.5);
+
+  // Save user preferences to local storage
+  useEffect(() => {
+    // Load saved preferences from localStorage if they exist
+    const savedPrompt = localStorage.getItem("lastPrompt");
+    const savedStyle = localStorage.getItem("selectedStyle");
+    const savedHistory = localStorage.getItem("imageHistory");
+
+    if (savedPrompt) setPrompt(savedPrompt);
+    if (savedStyle) setSelectedStyle(savedStyle);
+    if (savedHistory) {
+      try {
+        setImageHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error("Error parsing saved history:", e);
+      }
+    }
+  }, []);
+
+  // Save preferences when they change
+  useEffect(() => {
+    if (prompt) localStorage.setItem("lastPrompt", prompt);
+    if (selectedStyle) localStorage.setItem("selectedStyle", selectedStyle);
+    if (imageHistory.length > 0)
+      localStorage.setItem(
+        "imageHistory",
+        JSON.stringify(imageHistory.slice(0, 20)),
+      );
+  }, [prompt, selectedStyle, imageHistory]);
+
+  const [currentTheme, setCurrentTheme] = useState<string>("dark");
+  const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
+  const [chatPosition, setChatPosition] = useState({
+    right: "20px",
+    bottom: "20px",
+  });
+  const [showHistorySidebar, setShowHistorySidebar] = useState(false);
+  const [credits, setCredits] = useState(30);
+  const [showPaymentPlans, setShowPaymentPlans] = useState(false);
+  const [recentPrompts, setRecentPrompts] = useState<string[]>([]);
+  const [previousVersions, setPreviousVersions] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
+  const [showDrawingTab, setShowDrawingTab] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [features, setFeatures] = useState({
     enhanceDetails: false,
     hdrEffect: false,
@@ -951,8 +985,11 @@ const Home = () => {
   };
 
   const [activeFeature, setActiveFeature] = useState("text-to-image");
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  return (
+  return isAdmin ? (
+    <AdminPanel theme="dark" />
+  ) : (
     <div className="min-h-screen dark bg-black flex flex-col md:flex-row">
       {/* Mobile Feature Selector */}
       <div className="md:hidden bg-black text-white p-2 border-b border-gray-800 overflow-x-auto">
@@ -985,7 +1022,9 @@ const Home = () => {
         />
       </div>
 
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen relative">
+        {/* AdSense Ad Banner - Removed to fix error */}
+
         <LoadingOverlay
           isVisible={isAnalyzingImage || isEnhancingPrompt}
           message={
@@ -1200,12 +1239,29 @@ const Home = () => {
               </section>
             )}
 
+            {/* Payment Plans Section */}
+            {activeFeature === "text-to-image" && showPaymentPlans && (
+              <section>
+                <PaymentPlans
+                  theme="dark"
+                  onPurchase={(plan, planCredits) => {
+                    setCredits((prev) => prev + planCredits);
+                    setShowPaymentPlans(false);
+                  }}
+                />
+              </section>
+            )}
+
             {/* Generate Button - only show for text-to-image */}
             {activeFeature === "text-to-image" && (
-              <section className="flex justify-center">
+              <section className="flex flex-col items-center justify-center space-y-4">
                 <GenerateButton
                   onClick={handleGenerateImage}
                   onFastGenerate={() => {
+                    if (credits <= 0) {
+                      setShowPaymentPlans(true);
+                      return;
+                    }
                     setCredits((prev) => prev - 1);
                     handleGenerateImage();
                   }}
@@ -1229,6 +1285,15 @@ const Home = () => {
                         : "Generate Image"
                   }
                 />
+                {credits < 10 && (
+                  <Button
+                    onClick={() => setShowPaymentPlans(true)}
+                    variant="outline"
+                    className="text-sm text-blue-400 hover:text-blue-300"
+                  >
+                    Running low on credits? Buy more here!
+                  </Button>
+                )}
               </section>
             )}
 
@@ -1291,6 +1356,42 @@ const Home = () => {
             {/* Image History Gallery - only show on history tab */}
           </div>
         </main>
+
+        {/* Footer with Beta Version and Developer Info */}
+        <div className="w-full bg-gray-900 text-white py-4 px-4 border-t border-gray-800 mt-auto">
+          <div className="container mx-auto">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="mb-4 md:mb-0">
+                <p className="text-sm">Beta Version 0.9.0</p>
+                <p className="text-xs text-gray-400">
+                  © 2024 AI Image Generator
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm">
+                  Developed by <span className="font-bold">Shannniii</span>
+                </p>
+                <p className="text-xs text-gray-400">
+                  Fullstack Developer | AI Enthusiast
+                </p>
+                <div className="flex space-x-2">
+                  <a
+                    href="mailto:justaskcoding76@gmail.com"
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    justaskcoding76@gmail.com
+                  </a>
+                  <button
+                    onClick={() => setIsAdmin(!isAdmin)}
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    {isAdmin ? "Exit Admin" : "Admin Panel"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Floating Chatbot */}
