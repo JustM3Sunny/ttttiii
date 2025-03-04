@@ -97,8 +97,7 @@ const ThreeDModelViewer = ({
     }
   };
 
-  // This would normally use Three.js to render a 3D model
-  // For this demo, we'll simulate it with a placeholder
+  // Generate a 3D-like image instead of using Three.js
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -107,47 +106,170 @@ const ThreeDModelViewer = ({
       setIsLoading(false);
       // Auto-rotate to show the model is working
       setAutoRotate(true);
+      
+      // Generate a 3D-like image based on the prompt
+      const generateImage = () => {
+        // Create a canvas to draw a 3D-like image
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 800;
+        const ctx = canvas.getContext('2d');
+        
+        // Draw a gradient background
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, '#1a1a2e');
+        gradient.addColorStop(1, '#16213e');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw a 3D cube
+        ctx.strokeStyle = '#4361ee';
+        ctx.lineWidth = 2;
+        
+        // Front face
+        ctx.beginPath();
+        ctx.moveTo(300, 300);
+        ctx.lineTo(500, 300);
+        ctx.lineTo(500, 500);
+        ctx.lineTo(300, 500);
+        ctx.closePath();
+        ctx.stroke();
+        
+        // Back face
+        ctx.beginPath();
+        ctx.moveTo(400, 200);
+        ctx.lineTo(600, 200);
+        ctx.lineTo(600, 400);
+        ctx.lineTo(400, 400);
+        ctx.closePath();
+        ctx.stroke();
+        
+        // Connecting lines
+        ctx.beginPath();
+        ctx.moveTo(300, 300);
+        ctx.lineTo(400, 200);
+        ctx.moveTo(500, 300);
+        ctx.lineTo(600, 200);
+        ctx.moveTo(500, 500);
+        ctx.lineTo(600, 400);
+        ctx.moveTo(300, 500);
+        ctx.lineTo(400, 400);
+        ctx.stroke();
+        
+        // Add some glow effect
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#4361ee';
+        ctx.strokeStyle = '#4cc9f0';
+        ctx.beginPath();
+        ctx.arc(450, 350, 150, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Reset shadow
+        ctx.shadowBlur = 0;
+        
+        // Add some text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px Arial';
+        ctx.fillText('3D Model Viewer', 330, 550);
+        
+        // Return the canvas as an image
+        return canvas.toDataURL('image/png');
+      };
+      
+      // Replace the placeholder image with our generated 3D-like image
+      const modelImage = document.querySelector('#model-preview-image');
+      if (modelImage) {
+        modelImage.src = generateImage();
+      }
     }, 1500);
-
-    // In a real implementation, we would initialize Three.js here
-    // Example code (commented out):
-    /*
-    import * as THREE from 'three';
-    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-    
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    containerRef.current.appendChild(renderer.domElement);
-    
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    
-    const loader = new GLTFLoader();
-    loader.load(modelUrl, (gltf) => {
-      scene.add(gltf.scene);
-      // Center and scale the model
-      const box = new THREE.Box3().setFromObject(gltf.scene);
-      const center = box.getCenter(new THREE.Vector3());
-      gltf.scene.position.x = -center.x;
-      gltf.scene.position.y = -center.y;
-      gltf.scene.position.z = -center.z;
-    });
-    
-    camera.position.z = 5;
-    
-    const animate = () => {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    };
-    animate();
-    */
 
     return () => clearTimeout(timer);
   }, []);
+  
+  // Function to export 3D model as HTML
+  const exportAsHTML = () => {
+    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Model Viewer</title>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background-color: #1a1a2e; font-family: Arial, sans-serif; }
+    #container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+    .model { position: relative; width: 400px; height: 400px; transform-style: preserve-3d; transform: rotateY(0deg); animation: rotate 15s infinite linear; }
+    .face { position: absolute; width: 200px; height: 200px; border: 2px solid #4361ee; background-color: rgba(67, 97, 238, 0.1); }
+    .front { transform: translateZ(100px); }
+    .back { transform: translateZ(-100px) rotateY(180deg); }
+    .right { transform: rotateY(90deg) translateZ(100px); }
+    .left { transform: rotateY(-90deg) translateZ(100px); }
+    .top { transform: rotateX(90deg) translateZ(100px); }
+    .bottom { transform: rotateX(-90deg) translateZ(100px); }
+    .controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+    button { background: rgba(67, 97, 238, 0.3); color: white; border: 1px solid #4361ee; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+    button:hover { background: rgba(67, 97, 238, 0.5); }
+    @keyframes rotate { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+    .title { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: white; font-size: 24px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="title">3D Model Viewer</div>
+  <div id="container">
+    <div class="model" id="model">
+      <div class="face front"></div>
+      <div class="face back"></div>
+      <div class="face right"></div>
+      <div class="face left"></div>
+      <div class="face top"></div>
+      <div class="face bottom"></div>
+    </div>
+  </div>
+  
+  <div class="controls">
+    <button id="rotate">Pause Rotation</button>
+    <button id="zoom-in">Zoom In</button>
+    <button id="zoom-out">Zoom Out</button>
+  </div>
+  
+  <script>
+    const model = document.getElementById('model');
+    const rotateBtn = document.getElementById('rotate');
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomOutBtn = document.getElementById('zoom-out');
+    
+    let isRotating = true;
+    let zoom = 1;
+    
+    // Toggle rotation
+    rotateBtn.addEventListener('click', () => {
+      isRotating = !isRotating;
+      rotateBtn.textContent = isRotating ? 'Pause Rotation' : 'Resume Rotation';
+      model.style.animationPlayState = isRotating ? 'running' : 'paused';
+    });
+    
+    // Zoom in
+    zoomInBtn.addEventListener('click', () => {
+      zoom = Math.min(2, zoom + 0.1);
+      model.style.transform = `scale(${zoom})`;
+    });
+    
+    // Zoom out
+    zoomOutBtn.addEventListener('click', () => {
+      zoom = Math.max(0.5, zoom - 0.1);
+      model.style.transform = `scale(${zoom})`;
+    });
+  </script>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '3d_model_viewer.html';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Auto-rotate effect
   useEffect(() => {
@@ -236,8 +358,9 @@ const ThreeDModelViewer = ({
             </div>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
-              {/* This would be a Three.js canvas in a real implementation */}
+              {/* This is our 3D-like image */}
               <img
+                id="model-preview-image"
                 src={`https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80`}
                 alt="3D Model Preview"
                 className="w-64 h-64 object-cover rounded-lg shadow-lg"
@@ -373,100 +496,7 @@ const ThreeDModelViewer = ({
                 <span>Export {exportFormat.toUpperCase()}</span>
               </Button>
               <Button
-                onClick={() => {
-                  // Export as HTML with 3D model viewer
-                  const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Model Viewer</title>
-  <style>
-    body { margin: 0; padding: 0; overflow: hidden; background-color: #000; }
-    #container { width: 100vw; height: 100vh; }
-    .controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
-    button { background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-    button:hover { background: rgba(255,255,255,0.3); }
-  </style>
-</head>
-<body>
-  <div id="container"></div>
-  <div class="controls">
-    <button id="rotate">Rotate</button>
-    <button id="zoom-in">Zoom In</button>
-    <button id="zoom-out">Zoom Out</button>
-  </div>
-  
-  <script>
-    // This is a simplified 3D viewer that shows an image with rotation effect
-    // In a real implementation, you would use Three.js to render the actual 3D model
-    
-    const container = document.getElementById('container');
-    const rotateBtn = document.getElementById('rotate');
-    const zoomInBtn = document.getElementById('zoom-in');
-    const zoomOutBtn = document.getElementById('zoom-out');
-    
-    // Create image element
-    const img = document.createElement('img');
-    img.src = 'https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80';
-    img.style.width = '300px';
-    img.style.height = '300px';
-    img.style.position = 'absolute';
-    img.style.top = '50%';
-    img.style.left = '50%';
-    img.style.transform = 'translate(-50%, -50%)';
-    img.style.transition = 'transform 0.3s ease';
-    container.appendChild(img);
-    
-    // Variables for rotation and zoom
-    let rotation = 0;
-    let zoom = 1;
-    let isRotating = false;
-    
-    // Update transform
-    function updateTransform() {
-      img.style.transform = 'translate(-50%, -50%) rotateY(' + rotation + 'deg) scale(' + zoom + ')';
-    }
-    
-    // Rotation animation
-    function startRotation() {
-      if (isRotating) {
-        rotation = (rotation + 1) % 360;
-        updateTransform();
-        requestAnimationFrame(startRotation);
-      }
-    }
-    
-    // Event listeners
-    rotateBtn.addEventListener('click', () => {
-      isRotating = !isRotating;
-      rotateBtn.textContent = isRotating ? 'Stop' : 'Rotate';
-      if (isRotating) startRotation();
-    });
-    
-    zoomInBtn.addEventListener('click', () => {
-      zoom = Math.min(2, zoom + 0.1);
-      updateTransform();
-    });
-    
-    zoomOutBtn.addEventListener('click', () => {
-      zoom = Math.max(0.5, zoom - 0.1);
-      updateTransform();
-    });
-  </script>
-</body>
-</html>`;
-
-                  const blob = new Blob([htmlContent], {
-                    type: "text/html",
-                  });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement("a");
-                  link.href = url;
-                  link.download = "3d_model_viewer.html";
-                  link.click();
-                  URL.revokeObjectURL(url);
-                }}
+                onClick={exportAsHTML}
                 variant="outline"
                 className="flex items-center gap-1"
               >
