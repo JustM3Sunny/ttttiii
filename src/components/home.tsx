@@ -157,9 +157,6 @@ const Home = () => {
   const handleGenerateImage = async () => {
     if (!prompt.trim()) return;
 
-    // Prevent multiple clicks
-    if (isGenerating) return;
-
     // Save current image to previous versions if there is one
     if (generatedImage) {
       setPreviousVersions((prev) => [generatedImage, ...prev]);
@@ -170,7 +167,7 @@ const Home = () => {
     setImageLoaded(false);
     setIsGenerating(true);
 
-    // Create a semi-transparent overlay instead of full black
+    // Add a full-screen overlay during image generation
     const overlay = document.createElement("div");
     overlay.id = "generation-overlay";
     overlay.style.position = "fixed";
@@ -178,13 +175,12 @@ const Home = () => {
     overlay.style.left = "0";
     overlay.style.width = "100%";
     overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.6)"; // More transparent
+    overlay.style.backgroundColor = "rgba(0,0,0,0.8)";
     overlay.style.zIndex = "9998";
     overlay.style.display = "flex";
     overlay.style.justifyContent = "center";
     overlay.style.alignItems = "center";
     overlay.style.flexDirection = "column";
-    overlay.style.backdropFilter = "blur(5px)"; // Add blur effect
 
     const spinner = document.createElement("div");
     spinner.className =
@@ -195,7 +191,6 @@ const Home = () => {
     text.style.color = "white";
     text.style.marginTop = "20px";
     text.style.fontSize = "18px";
-    text.style.fontWeight = "bold";
 
     overlay.appendChild(spinner);
     overlay.appendChild(text);
@@ -443,9 +438,6 @@ const Home = () => {
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) return;
 
-    // Prevent multiple clicks
-    if (isEnhancingPrompt) return;
-
     setIsEnhancingPrompt(true);
 
     try {
@@ -673,9 +665,6 @@ const Home = () => {
   const handleCreateVariation = () => {
     if (!generatedImage || !prompt) return;
 
-    // Prevent multiple clicks
-    if (document.getElementById("variations-overlay")) return;
-
     // Save current image to history
     setPreviousVersions((prev) => [generatedImage, ...prev]);
 
@@ -687,13 +676,12 @@ const Home = () => {
     overlay.style.left = "0";
     overlay.style.width = "100%";
     overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.6)"; // More transparent
+    overlay.style.backgroundColor = "rgba(0,0,0,0.8)";
     overlay.style.zIndex = "9998";
     overlay.style.display = "flex";
     overlay.style.justifyContent = "center";
     overlay.style.alignItems = "center";
     overlay.style.flexDirection = "column";
-    overlay.style.backdropFilter = "blur(5px)"; // Add blur effect
 
     const spinner = document.createElement("div");
     spinner.className =
@@ -704,7 +692,6 @@ const Home = () => {
     text.style.color = "white";
     text.style.marginTop = "20px";
     text.style.fontSize = "18px";
-    text.style.fontWeight = "bold";
 
     overlay.appendChild(spinner);
     overlay.appendChild(text);
@@ -1170,9 +1157,6 @@ const Home = () => {
   const generateVariants = () => {
     if (!generatedImage) return;
 
-    // Prevent multiple overlays
-    if (document.getElementById("variants-overlay")) return;
-
     // Show loading overlay for variants
     const overlay = document.createElement("div");
     overlay.id = "variants-overlay";
@@ -1181,13 +1165,12 @@ const Home = () => {
     overlay.style.left = "0";
     overlay.style.width = "100%";
     overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.6)"; // More transparent
+    overlay.style.backgroundColor = "rgba(0,0,0,0.8)";
     overlay.style.zIndex = "9998";
     overlay.style.display = "flex";
     overlay.style.justifyContent = "center";
     overlay.style.alignItems = "center";
     overlay.style.flexDirection = "column";
-    overlay.style.backdropFilter = "blur(5px)"; // Add blur effect
 
     const spinner = document.createElement("div");
     spinner.className =
@@ -1198,7 +1181,6 @@ const Home = () => {
     text.style.color = "white";
     text.style.marginTop = "20px";
     text.style.fontSize = "18px";
-    text.style.fontWeight = "bold";
 
     overlay.appendChild(spinner);
     overlay.appendChild(text);
