@@ -237,19 +237,15 @@ const ThreeDModelViewer = ({
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               {/* This would be a Three.js canvas in a real implementation */}
-              <div
-                className="w-64 h-64 relative"
+              <img
+                src={`https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80`}
+                alt="3D Model Preview"
+                className="w-64 h-64 object-cover rounded-lg shadow-lg"
                 style={{
                   transform: `rotateY(${rotation}deg) scale(${zoom})`,
                   transition: autoRotate ? "none" : "transform 0.3s ease",
                 }}
-              >
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Box
-                    className={`h-full w-full ${theme === "luxury" ? "text-amber-500" : theme === "neon" ? "text-pink-500" : theme === "evening" ? "text-indigo-500" : "text-blue-500"}`}
-                  />
-                </div>
-              </div>
+              />
             </div>
           )}
 
@@ -377,36 +373,105 @@ const ThreeDModelViewer = ({
                 <span>Export {exportFormat.toUpperCase()}</span>
               </Button>
               <Button
-                variant="outline"
                 onClick={() => {
-                  // Simulate code export based on the selected format
-                  let codeContent = "";
-                  let fileName = "";
+                  // Export as HTML with 3D model viewer
+                  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Model Viewer</title>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background-color: #000; }
+    #container { width: 100vw; height: 100vh; }
+    .controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+    button { background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+    button:hover { background: rgba(255,255,255,0.3); }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <div class="controls">
+    <button id="rotate">Rotate</button>
+    <button id="zoom-in">Zoom In</button>
+    <button id="zoom-out">Zoom Out</button>
+  </div>
+  
+  <script>
+    // This is a simplified 3D viewer that shows an image with rotation effect
+    // In a real implementation, you would use Three.js to render the actual 3D model
+    
+    const container = document.getElementById('container');
+    const rotateBtn = document.getElementById('rotate');
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomOutBtn = document.getElementById('zoom-out');
+    
+    // Create image element
+    const img = document.createElement('img');
+    img.src = 'https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80';
+    img.style.width = '300px';
+    img.style.height = '300px';
+    img.style.position = 'absolute';
+    img.style.top = '50%';
+    img.style.left = '50%';
+    img.style.transform = 'translate(-50%, -50%)';
+    img.style.transition = 'transform 0.3s ease';
+    container.appendChild(img);
+    
+    // Variables for rotation and zoom
+    let rotation = 0;
+    let zoom = 1;
+    let isRotating = false;
+    
+    // Update transform
+    function updateTransform() {
+      img.style.transform = 'translate(-50%, -50%) rotateY(' + rotation + 'deg) scale(' + zoom + ')';
+    }
+    
+    // Rotation animation
+    function startRotation() {
+      if (isRotating) {
+        rotation = (rotation + 1) % 360;
+        updateTransform();
+        requestAnimationFrame(startRotation);
+      }
+    }
+    
+    // Event listeners
+    rotateBtn.addEventListener('click', () => {
+      isRotating = !isRotating;
+      rotateBtn.textContent = isRotating ? 'Stop' : 'Rotate';
+      if (isRotating) startRotation();
+    });
+    
+    zoomInBtn.addEventListener('click', () => {
+      zoom = Math.min(2, zoom + 0.1);
+      updateTransform();
+    });
+    
+    zoomOutBtn.addEventListener('click', () => {
+      zoom = Math.max(0.5, zoom - 0.1);
+      updateTransform();
+    });
+  </script>
+</body>
+</html>`;
 
-                  if (exportFormat === "glb" || exportFormat === "gltf") {
-                    codeContent = `// Three.js code for this model\nimport * as THREE from 'three';\nimport { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';\nimport { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';\n\n// Initialize scene, camera, and renderer\nconst scene = new THREE.Scene();\nconst camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(window.innerWidth, window.innerHeight);\nrenderer.setClearColor(0x000000);\nrenderer.shadowMap.enabled = true;\ndocument.body.appendChild(renderer.domElement);\n\n// Add lighting\nconst ambientLight = new THREE.AmbientLight(0xffffff, 0.5);\nscene.add(ambientLight);\n\nconst directionalLight = new THREE.DirectionalLight(0xffffff, 1);\ndirectionalLight.position.set(5, 10, 7.5);\ndirectionalLight.castShadow = true;\nscene.add(directionalLight);\n\n// Add orbit controls\nconst controls = new OrbitControls(camera, renderer.domElement);\ncontrols.enableDamping = true;\ncontrols.dampingFactor = 0.05;\n\n// Load the model\nconst loader = new GLTFLoader();\nloader.load('model.${exportFormat}', function(gltf) {\n  // Center the model\n  const box = new THREE.Box3().setFromObject(gltf.scene);\n  const center = box.getCenter(new THREE.Vector3());\n  gltf.scene.position.x = -center.x;\n  gltf.scene.position.y = -center.y;\n  gltf.scene.position.z = -center.z;\n  \n  // Add the model to the scene\n  scene.add(gltf.scene);\n});\n\n// Position camera\ncamera.position.z = 5;\n\n// Animation loop\nfunction animate() {\n  requestAnimationFrame(animate);\n  controls.update();\n  renderer.render(scene, camera);\n}\nanimate();`;
-                    fileName = `three_js_${exportFormat}_viewer.js`;
-                  } else if (exportFormat === "obj") {
-                    codeContent = `// Three.js code for this model\nimport * as THREE from 'three';\nimport { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';\nimport { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';\nimport { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';\n\n// Initialize scene, camera, and renderer\nconst scene = new THREE.Scene();\nconst camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(window.innerWidth, window.innerHeight);\nrenderer.setClearColor(0x000000);\nrenderer.shadowMap.enabled = true;\ndocument.body.appendChild(renderer.domElement);\n\n// Add lighting\nconst ambientLight = new THREE.AmbientLight(0xffffff, 0.5);\nscene.add(ambientLight);\n\nconst directionalLight = new THREE.DirectionalLight(0xffffff, 1);\ndirectionalLight.position.set(5, 10, 7.5);\ndirectionalLight.castShadow = true;\nscene.add(directionalLight);\n\n// Add orbit controls\nconst controls = new OrbitControls(camera, renderer.domElement);\ncontrols.enableDamping = true;\ncontrols.dampingFactor = 0.05;\n\n// Load the model\nconst mtlLoader = new MTLLoader();\nmtlLoader.load('model.mtl', function(materials) {\n  materials.preload();\n  \n  const objLoader = new OBJLoader();\n  objLoader.setMaterials(materials);\n  objLoader.load('model.obj', function(object) {\n    // Center the model\n    const box = new THREE.Box3().setFromObject(object);\n    const center = box.getCenter(new THREE.Vector3());\n    object.position.x = -center.x;\n    object.position.y = -center.y;\n    object.position.z = -center.z;\n    \n    // Add the model to the scene\n    scene.add(object);\n  });\n});\n\n// Position camera\ncamera.position.z = 5;\n\n// Animation loop\nfunction animate() {\n  requestAnimationFrame(animate);\n  controls.update();\n  renderer.render(scene, camera);\n}\nanimate();`;
-                    fileName = "three_js_obj_viewer.js";
-                  } else if (exportFormat === "usdz") {
-                    codeContent = `// AR Quick Look code for iOS\n// This is a simple HTML file that will display your USDZ model in AR on iOS devices\n\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>AR Model Viewer</title>\n  <style>\n    body { margin: 0; padding: 20px; font-family: Arial, sans-serif; text-align: center; }\n    .ar-button { display: inline-block; padding: 12px 24px; background: #007AFF; color: white; \n                 border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 20px; }\n    .model-preview { max-width: 100%; height: auto; margin: 20px 0; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }\n  </style>\n</head>\n<body>\n  <h1>View in AR</h1>\n  <p>Click the button below to view the 3D model in AR on your iOS device</p>\n  \n  <img src="model_preview.jpg" alt="Model Preview" class="model-preview">\n  \n  <a rel="ar" href="model.usdz" class="ar-button">\n    View in AR\n  </a>\n  \n  <p><small>Requires iOS 12+ with ARKit support</small></p>\n</body>\n</html>`;
-                    fileName = "ar_viewer.html";
-                  }
-
-                  const blob = new Blob([codeContent], {
-                    type: "text/javascript",
+                  const blob = new Blob([htmlContent], {
+                    type: "text/html",
                   });
                   const url = URL.createObjectURL(blob);
                   const link = document.createElement("a");
                   link.href = url;
-                  link.download = fileName;
+                  link.download = "3d_model_viewer.html";
                   link.click();
+                  URL.revokeObjectURL(url);
                 }}
+                variant="outline"
                 className="flex items-center gap-1"
               >
                 <Code className="h-4 w-4" />
-                <span>Export Code</span>
+                <span>Export HTML</span>
               </Button>
             </div>
 
