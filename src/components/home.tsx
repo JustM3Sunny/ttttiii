@@ -2211,5 +2211,5 @@ className={selectedFeatures.includes(feature)
     </DialogContent>
   </Dialog>
 </div>)
-} // Add this closing bracket to fix error
+}} // Add this closing bracket to fix error
   
