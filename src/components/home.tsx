@@ -2195,12 +2195,6 @@ className={px-3 py-2 rounded-md text-sm whitespace-nowrap ${activeFeature === it
     </DialogContent>
   </Dialog>
 </div>
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
-
 );
 };
 
