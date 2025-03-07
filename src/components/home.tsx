@@ -2207,8 +2207,9 @@ className={selectedFeatures.includes(feature)
             </div>
           </div>
         </div>
-      </div>
+   </div>
     </DialogContent>
   </Dialog>
 </div>);
-};
+}; // Add this closing bracket to fix error
+  
