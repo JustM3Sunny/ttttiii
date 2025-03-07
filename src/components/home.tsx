@@ -59,20 +59,40 @@ interface GeneratedImage {
 }
 
 const Home = () => {
+  // --- Configuration Constants ---
+  const MAX_IMAGE_HISTORY = 10; // Increased image history
+  const GENERATION_TIMEOUT = 15000; // Increased timeout
+  const VARIATION_COUNT = 6; // Increased variations
+  const MAX_RECENT_PROMPTS = 10;
+  const FALLBACK_IMAGES = [
+    "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
+    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
+    "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
+    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
+    "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
+    "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
+    "https://images.unsplash.com/photo-1690205682524-79b2e7508881?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+    "https://images.unsplash.com/photo-1687360440097-7c43ca908e56?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+  ];
+
   const [prompt, setPrompt] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("realistic");
-  const [dimensions, setDimensions] = useState({ width: 512, height: 512 });
-  const [resolution, setResolution] = useState(75);
+  const [dimensions, setDimensions] = useState({ width: 768, height: 768 }); // Default dimensions
+  const [resolution, setResolution] = useState(150); // Increased default resolution
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState("");
   const [imageHistory, setImageHistory] = useState<GeneratedImage[]>([]);
-  const [selectedModel, setSelectedModel] = useState("stable-diffusion-xl");
-  const [selectedSampler, setSelectedSampler] = useState("euler-a");
-  const [steps, setSteps] = useState(30);
+  const [selectedModel, setSelectedModel] = useState(
+    "stable-diffusion-xl-turbo",
+  ); // More advanced model
+  const [selectedSampler, setSelectedSampler] = useState("dpmpp_2m_sde"); // Improved sampler
+  const [steps, setSteps] = useState(45); // Increased steps for better quality
   const [seed, setSeed] = useState("");
-  const [negativePrompt, setNegativePrompt] = useState("");
-  const [guidanceScale, setGuidanceScale] = useState(7.5);
+  const [negativePrompt, setNegativePrompt] = useState(
+    "blurry, distorted, artifacts, low resolution, watermark, text",
+  ); // Enhanced default negative prompt
+  const [guidanceScale, setGuidanceScale] = useState(9); // Fine-tuned guidance scale
 
   // Save user preferences to local storage
   useEffect(() => {
@@ -98,10 +118,10 @@ const Home = () => {
       if (prompt) localStorage.setItem("lastPrompt", prompt);
       if (selectedStyle) localStorage.setItem("selectedStyle", selectedStyle);
       if (imageHistory.length > 0) {
-        // Only store the 5 most recent images to avoid quota issues
+        // Only store the MAX_IMAGE_HISTORY most recent images to avoid quota issues
         localStorage.setItem(
           "imageHistory",
-          JSON.stringify(imageHistory.slice(0, 5)),
+          JSON.stringify(imageHistory.slice(0, MAX_IMAGE_HISTORY)),
         );
       }
     } catch (error) {
@@ -143,11 +163,14 @@ const Home = () => {
   const [showDrawingTab, setShowDrawingTab] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [features, setFeatures] = useState({
-    enhanceDetails: false,
-    hdrEffect: false,
+    enhanceDetails: true, // Enable by default
+    hdrEffect: true, // Enable by default
     removeBackground: false,
-    upscale: false,
-    faceCorrection: false,
+    upscale: true, // Enable by default
+    faceCorrection: true, // Enable by default
+    colorEnhancement: true, // New feature
+    textureDetail: true, // New feature
+    realisticLighting: true, // New feature
   });
   // Track redo stack separately
   const [redoStack, setRedoStack] = useState<string[]>([]);
@@ -165,11 +188,15 @@ const Home = () => {
   // Function to handle random prompt generation
   const handleGenerateRandomPrompt = () => {
     const randomPrompts = [
-      "A futuristic cityscape at night with neon lights, tall skyscrapers, and flying vehicles. Cyberpunk style with dramatic lighting.",
-      "A serene nature scene with sunlight filtering through trees, creating a magical atmosphere. Photorealistic quality with perfect composition.",
-      "A whimsical fairy-tale scene with a hidden cottage in an enchanted forest, detailed foliage, and glowing mushrooms.",
-      "A majestic dragon perched atop a snow-capped mountain, rendered in a high-resolution, realistic style with dynamic lighting.",
-      "An underwater scene with colorful coral reefs, exotic fish, and a sunken pirate ship, brought to life with vibrant hues and intricate details.",
+      "A breathtaking 8K render of a futuristic cityscape at night with neon lights reflecting on the wet streets. Cyberpunk style with dramatic and cinematic lighting.",
+      "A serene and photorealistic nature scene with golden sunlight filtering through ancient trees, creating a magical, ethereal atmosphere in 8K.",
+      "A whimsical and highly detailed fairy-tale scene with a cozy, hidden cottage nestled in an enchanted forest, with vibrant foliage, glowing mushrooms, and fireflies in 8K.",
+      "An ultra-detailed, majestic dragon perched atop a snow-capped mountain at sunset, rendered in a high-resolution, realistic style with dynamic lighting and dramatic clouds in 8K.",
+      "An awe-inspiring underwater scene with colorful coral reefs teeming with exotic fish and a sunken pirate ship, brought to life with vibrant hues, intricate details, and volumetric lighting in 8K.",
+      "A hyperrealistic portrait of a wise, old wizard with a long, flowing beard, wrinkles showing age and experience, and intense, magical eyes. 8K detail with subsurface scattering.",
+      "A surreal dreamscape featuring floating islands, gravity-defying waterfalls, and fantastical creatures rendered in a vibrant, otherworldly style with 8K clarity.",
+      "A steampunk airship soaring through the skies above a Victorian city, intricate mechanical details, gears, steam, and brass textures in stunning 8K resolution.",
+      "A hyperrealistic close-up of a blooming exotic flower with intricate petal details, dew drops, and vibrant colors, captured in stunning 8K macro photography.",
     ];
     const randomIndex = Math.floor(Math.random() * randomPrompts.length);
     setPrompt(randomPrompts[randomIndex]);
@@ -197,9 +224,32 @@ const Home = () => {
     await handleGenerateImage();
   };
 
+  const showNotification = (message: string, type: "success" | "error") => {
+    const notification = document.createElement("div");
+    notification.style.position = "fixed";
+    notification.style.top = "20px";
+    notification.style.left = "50%";
+    notification.style.transform = "translateX(-50%)";
+    notification.style.backgroundColor =
+      type === "success" ? "rgba(0, 128, 0, 0.8)" : "rgba(255, 0, 0, 0.8)";
+    notification.style.color = "white";
+    notification.style.padding = "10px 20px";
+    notification.style.borderRadius = "5px";
+    notification.style.zIndex = "10000"; // Ensure it's on top
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      document.body.removeChild(notification);
+    }, 3000);
+  };
   // Advanced image generation function with Gemini integration
   const handleGenerateImage = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim()) {
+      showNotification("Please enter a prompt.", "error");
+      return;
+    }
 
     // Save current image to previous versions if there is one
     if (generatedImage) {
@@ -246,16 +296,31 @@ const Home = () => {
 
       // Add feature-specific enhancements
       if (features.enhanceDetails) {
-        enhancedPrompt += ", highly detailed, intricate details, sharp focus";
+        enhancedPrompt +=
+          ", extremely detailed, intricate details, sharp focus, hyperrealism";
       }
 
       if (features.hdrEffect) {
-        enhancedPrompt += ", HDR, dramatic lighting, high dynamic range";
+        enhancedPrompt +=
+          ", HDR, dramatic lighting, high dynamic range, vibrant colors, detailed shadows";
       }
 
       if (features.faceCorrection) {
         enhancedPrompt +=
-          ", perfect face, detailed facial features, realistic skin texture";
+          ", perfect face, detailed facial features, realistic skin texture, flawless skin";
+      }
+
+      if (features.colorEnhancement) {
+        enhancedPrompt += ", vibrant colors, enhanced color grading";
+      }
+
+      if (features.textureDetail) {
+        enhancedPrompt += ", high-resolution textures, detailed surface";
+      }
+
+      if (features.realisticLighting) {
+        enhancedPrompt +=
+          ", volumetric lighting, realistic shadows, cinematic illumination";
       }
 
       // Add style-specific enhancements
@@ -271,14 +336,14 @@ const Home = () => {
 
       // Add tuning text for better results
       const tuningText =
-        ", ultra high resolution, 4K, professional lighting, cinematic";
+        ", ultra high resolution, 8K, professional lighting, cinematic, masterpiece, perfect composition, trending on artstation";
       fullPrompt += tuningText;
 
       // Generate image URL based on dimensions and seed
       // Use extended height to avoid watermark, will crop later
       const extendedHeight = dimensions.height * 1.2; // 20% taller to hide watermark
       // Always generate HD 2K images regardless of user settings
-      let imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=2k`; // Always use 2K quality
+      let imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=4k`; // Use 4K quality
 
       // Add seed if provided
       if (seed) {
@@ -300,6 +365,11 @@ const Home = () => {
         imageUrl += `&sampler=${selectedSampler}`;
       }
 
+      // Add the selected model
+      if (selectedModel) {
+        imageUrl += `&model=${selectedModel}`;
+      }
+
       console.log("Generating image with URL:", imageUrl);
 
       // Create a new image to load it
@@ -312,21 +382,13 @@ const Home = () => {
         if (isGenerating) {
           console.log("Image generation timeout, using fallback");
           // Use a fallback image if the generation is taking too long
-          const fallbackImages = [
-            "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
-            "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
-            "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
-            "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
-            "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
-            "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
-          ];
 
           // Deterministically select an image based on the prompt to simulate consistent generation
           const promptHash = prompt
             .split("")
             .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const imageIndex = promptHash % fallbackImages.length;
-          const selectedImage = fallbackImages[imageIndex];
+          const imageIndex = promptHash % FALLBACK_IMAGES.length;
+          const selectedImage = FALLBACK_IMAGES[imageIndex];
 
           const fallbackImg = new Image();
           fallbackImg.crossOrigin = "anonymous";
@@ -342,7 +404,7 @@ const Home = () => {
             }
           };
         }
-      }, 8000); // 8 second timeout
+      }, GENERATION_TIMEOUT); // Increased timeout
 
       const handleImageLoaded = (loadedImg) => {
         clearTimeout(timeoutId);
@@ -380,14 +442,16 @@ const Home = () => {
           ctx.putImageData(imageData, 0, 0);
         }
 
-        if (features.upscale && dimensions.width < 1024) {
+        if (features.upscale && dimensions.width < 2048) {
           // Simulate upscaling by creating a larger canvas
           const upscaledCanvas = document.createElement("canvas");
           upscaledCanvas.width = canvas.width * 2;
           upscaledCanvas.height = canvas.height * 2;
           const upscaledCtx = upscaledCanvas.getContext("2d");
 
-          // Draw the original image onto the larger canvas
+          // Draw the original image onto the larger canvas using bicubic interpolation
+          upscaledCtx.imageSmoothingEnabled = true;
+          upscaledCtx.imageSmoothingQuality = "high"; // Or 'low', 'medium'
           upscaledCtx.drawImage(
             canvas,
             0,
@@ -416,13 +480,29 @@ const Home = () => {
 
         // Add to recent prompts if not already there
         if (!recentPrompts.includes(prompt)) {
-          setRecentPrompts((prev) => [prompt, ...prev.slice(0, 4)]);
+          setRecentPrompts((prev) => [prompt, ...prev.slice(0, MAX_RECENT_PROMPTS)]);
         }
 
         console.log("Generated new image with prompt:", prompt);
 
         // Generate variants
         generateVariants();
+
+        // Save the generated image to history
+        const newImage: GeneratedImage = {
+          id: Date.now().toString(), // Use timestamp as ID
+          imageUrl: processedImageUrl,
+          prompt: prompt,
+          style: selectedStyle,
+          dimensions: `${dimensions.width}x${dimensions.height}`,
+          createdAt: new Date().toISOString(),
+          model: selectedModel,
+          negativePrompt: negativePrompt,
+          seed: seed,
+          guidanceScale: guidanceScale,
+          steps: steps,
+        };
+        setImageHistory((prevHistory) => [newImage, ...prevHistory]);
       };
 
       img.onload = function () {
@@ -432,21 +512,13 @@ const Home = () => {
       img.onerror = function () {
         console.error("Error loading image, using fallback");
         // Use a fallback image if the generation fails
-        const fallbackImages = [
-          "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
-          "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
-          "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
-          "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
-          "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
-          "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
-        ];
 
         // Deterministically select an image based on the prompt
         const promptHash = prompt
           .split("")
           .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const imageIndex = promptHash % fallbackImages.length;
-        const selectedImage = fallbackImages[imageIndex];
+        const imageIndex = promptHash % FALLBACK_IMAGES.length;
+        const selectedImage = FALLBACK_IMAGES[imageIndex];
 
         const fallbackImg = new Image();
         fallbackImg.crossOrigin = "anonymous";
@@ -465,7 +537,7 @@ const Home = () => {
     } catch (error) {
       console.error("Error generating image:", error);
       setIsGenerating(false);
-      alert("Image generation failed");
+      showNotification("Image generation failed", "error");
 
       // Remove the overlay in case of error
       const overlay = document.getElementById("generation-overlay");
@@ -480,7 +552,10 @@ const Home = () => {
 
   // Function to enhance prompt using Gemini API with fallback
   const handleEnhancePrompt = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim()) {
+      showNotification("Please enter a prompt.", "error");
+      return;
+    }
 
     setIsEnhancingPrompt(true);
 
@@ -494,7 +569,7 @@ const Home = () => {
         // Fallback to local enhancement if API fails
         const enhancementPhrases = [
           "ultra detailed",
-          "highly attracttive full image",
+          "highly attractive full image",
           "professional lighting",
           "cinematic composition",
           "8K resolution",
@@ -523,7 +598,7 @@ const Home = () => {
       }
     } catch (error) {
       console.error("Error enhancing prompt:", error);
-      alert("Failed to enhance prompt. Please try again.");
+      showNotification("Failed to enhance prompt. Please try again.", "error");
     } finally {
       setIsEnhancingPrompt(false);
     }
@@ -542,11 +617,11 @@ const Home = () => {
         console.error("Gemini API error, using fallback:", apiError);
         // Fallback to predefined prompts if API fails
         const imagePrompts = [
-          "A stunning landscape with dramatic lighting, mountains in the background and a serene lake in the foreground. Ultra-realistic 4K resolution with cinematic feel.",
-          "A detailed portrait with perfect lighting, shallow depth of field, and professional studio quality. High-resolution with natural skin tones.",
-          "An abstract digital artwork with vibrant colors and flowing shapes. High-contrast with sharp details and modern aesthetic.",
-          "A futuristic cityscape at night with neon lights, tall skyscrapers, and flying vehicles. Cyberpunk style with dramatic lighting.",
-          "A serene nature scene with sunlight filtering through trees, creating a magical atmosphere. Photorealistic quality with perfect composition.",
+          "A stunning landscape with dramatic lighting, mountains in the background and a serene lake in the foreground. Ultra-realistic 8K resolution with cinematic feel.",
+          "A detailed portrait with perfect lighting, shallow depth of field, and professional studio quality. High-resolution with natural skin tones and subsurface scattering in 8K.",
+          "An abstract digital artwork with vibrant colors and flowing shapes. High-contrast with sharp details and modern aesthetic in 8K.",
+          "A futuristic cityscape at night with neon lights, tall skyscrapers, and flying vehicles. Cyberpunk style with dramatic lighting in 8K.",
+          "A serene nature scene with sunlight filtering through trees, creating a magical atmosphere. Photorealistic quality with perfect composition in 8K.",
         ];
 
         // Select a random prompt from the list
@@ -559,7 +634,10 @@ const Home = () => {
       handleGenerateImage();
     } catch (error) {
       console.error("Error analyzing image:", error);
-      alert("Failed to analyze image. Using default prompt instead.");
+      showNotification(
+        "Failed to analyze image. Using default prompt instead.",
+        "error",
+      );
     } finally {
       setIsAnalyzingImage(false);
     }
@@ -590,11 +668,11 @@ const Home = () => {
         console.error("Gemini API error, using fallback:", apiError);
         // Fallback to predefined prompts if API fails
         const drawingPrompts = [
-          "A professional digital artwork based on a hand-drawn sketch, with detailed elements, vibrant colors, and professional composition. High-quality rendering with smooth lines and textures.",
-          "A polished illustration derived from a sketch, with enhanced details, professional coloring, and artistic style. Clean lines and perfect proportions.",
-          "A refined digital painting based on a rough sketch, with beautiful color gradients, detailed textures, and professional lighting effects.",
-          "An artistic rendering of a hand-drawn concept, transformed into a professional illustration with perfect proportions and vivid colors.",
-          "A sketch transformed into a masterful digital artwork, with enhanced details, dramatic lighting, and professional composition.",
+          "A professional digital artwork based on a hand-drawn sketch, with detailed elements, vibrant colors, and professional composition in 8K. High-quality rendering with smooth lines and textures.",
+          "A polished illustration derived from a sketch, with enhanced details, professional coloring, and artistic style in 8K. Clean lines and perfect proportions.",
+          "A refined digital painting based on a rough sketch, with beautiful color gradients, detailed textures, and professional lighting effects in 8K.",
+          "An artistic rendering of a hand-drawn concept, transformed into a professional illustration with perfect proportions and vivid colors in 8K.",
+          "A sketch transformed into a masterful digital artwork, with enhanced details, dramatic lighting, and professional composition in 8K.",
         ];
 
         // Select a random prompt from the list
@@ -603,26 +681,15 @@ const Home = () => {
         setPrompt(randomPrompt);
       }
 
-      // Show success message
-      const successMessage = document.createElement("div");
-      successMessage.style.position = "fixed";
-      successMessage.style.top = "20px";
-      successMessage.style.left = "50%";
-      successMessage.style.transform = "translateX(-50%)";
-      successMessage.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
-      successMessage.style.color = "white";
-      successMessage.style.padding = "10px 20px";
-      successMessage.style.borderRadius = "5px";
-      successMessage.style.zIndex = "9999";
-      successMessage.textContent = "Drawing processed successfully!";
-      document.body.appendChild(successMessage);
-      setTimeout(() => document.body.removeChild(successMessage), 3000);
-
+      showNotification("Drawing processed successfully!", "success");
       setActiveFeature("text-to-image"); // Switch back to main tab
       handleGenerateImage();
     } catch (error) {
       console.error("Error generating from drawing:", error);
-      alert("Failed to process drawing. Using default prompt instead.");
+      showNotification(
+        "Failed to process drawing. Using default prompt instead.",
+        "error",
+      );
     } finally {
       setIsAnalyzingImage(false);
     }
@@ -678,13 +745,14 @@ const Home = () => {
         });
       } else {
         // Fallback for browsers that don't support Web Share API
-        alert(
+        showNotification(
           "Sharing is not available in your browser. Please download the image and share it manually.",
+          "error",
         );
       }
     } catch (error) {
       console.error("Error sharing image:", error);
-      alert("Error sharing image");
+      showNotification("Error sharing image", "error");
     }
   };
 
@@ -707,11 +775,8 @@ const Home = () => {
   };
 
   // Function to create variations of the current image
-  const handleCreateVariation = () => {
+  const generateVariants = async () => {
     if (!generatedImage || !prompt) return;
-
-    // Save current image to history
-    setPreviousVersions((prev) => [generatedImage, ...prev]);
 
     // Show loading overlay for variations
     const overlay = document.createElement("div");
@@ -741,111 +806,42 @@ const Home = () => {
     overlay.appendChild(spinner);
     overlay.appendChild(text);
     document.body.appendChild(overlay);
-
-    // Generate 3-4 variations with different seeds and slight prompt modifications
-    const variations = [];
-    const variationCount = 4; // Generate 4 variations
-    let completedVariations = 0;
+    const variations: string[] = [];
 
     // Create slight variations of the prompt
     const promptVariations = [
-      prompt + ", slightly different lighting",
-      prompt + ", alternative perspective",
-      prompt + ", different composition",
-      prompt + ", subtle color shift",
+      prompt + ", with a subtle change in lighting",
+      prompt + ", seen from a different angle",
+      prompt + ", re-imagined with a unique composition",
+      prompt + ", featuring a slight color variation",
+      prompt + ", with an alternate mood or atmosphere",
+      prompt + ", emphasizing a different element of the scene",
     ];
 
-    // Generate each variation
-    for (let i = 0; i < variationCount; i++) {
-      // Use a different seed for each variation
+    let completedVariations = 0;
+    const promises = [];
+    for (let i = 0; i < VARIATION_COUNT; i++) {
       const randomSeed = Math.floor(Math.random() * 1000000).toString();
-
-      // Create the variation URL with the modified prompt and random seed
       const variationPrompt = promptVariations[i];
-      const extendedHeight = dimensions.height * 1.2;
-      let variationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(variationPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=2k&seed=${randomSeed}`;
 
-      // Load the variation image
-      const variationImg = new Image();
-      variationImg.crossOrigin = "anonymous";
-      variationImg.src = variationUrl;
+      const variationImagePromise = new Promise<void>((resolve, reject) => {
+        const extendedHeight = dimensions.height * 1.2; // Ensure this is accessible
 
-      variationImg.onload = () => {
-        // Create a canvas to process the image (crop watermark if needed)
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+        let variationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(variationPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=4k&seed=${randomSeed}`;
 
-        // Set canvas size (crop height to remove watermark)
-        const cropHeight = Math.min(
-          variationImg.height,
-          variationImg.height * 0.83,
-        );
-        canvas.width = variationImg.width;
-        canvas.height = cropHeight;
+        const variationImg = new Image();
+        variationImg.crossOrigin = "anonymous";
 
-        // Draw the image with cropping
-        ctx.drawImage(
-          variationImg,
-          0,
-          0,
-          variationImg.width,
-          cropHeight,
-          0,
-          0,
-          variationImg.width,
-          cropHeight,
-        );
+        variationImg.onload = () => {
+          const canvas = document.createElement("canvas");
+    //       const ctx =
+    // // Fallback in case all image loads fail
+    // setTimeout(() => {
+    //   if (completedVariations < variationCount) {
+    //     console.log("Variation generation timeout, using fallback");
 
-        // Get the processed image as data URL
-        const processedVariationUrl = canvas.toDataURL("image/png");
-        variations.push(processedVariationUrl);
-
-        completedVariations++;
-
-        // When all variations are done
-        if (completedVariations === variationCount) {
-          // Update variants state
-          setVariants(variations);
-
-          // Set the first variation as the current image
-          if (variations.length > 0) {
-            setGeneratedImage(variations[0]);
-          }
-
-          // Remove the overlay
-          const variationsOverlay =
-            document.getElementById("variations-overlay");
-          if (variationsOverlay) document.body.removeChild(variationsOverlay);
-        }
-      };
-
-      variationImg.onerror = () => {
-        console.error("Error loading variation image");
-        completedVariations++;
-
-        // If all variations have been attempted (even with errors)
-        if (completedVariations === variationCount) {
-          // Update with whatever variations we have
-          if (variations.length > 0) {
-            setVariants(variations);
-            setGeneratedImage(variations[0]);
-          }
-
-          // Remove the overlay
-          const variationsOverlay =
-            document.getElementById("variations-overlay");
-          if (variationsOverlay) document.body.removeChild(variationsOverlay);
-        }
-      };
-    }
-
-    // Fallback in case all image loads fail
-    setTimeout(() => {
-      if (completedVariations < variationCount) {
-        console.log("Variation generation timeout, using fallback");
-
-        // Create a temporary canvas for processing
-        const canvas = document.createElement("canvas");
+    //     // Create a temporary canvas for processing
+    //     const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         if (!ctx) {
           const variationsOverlay =
