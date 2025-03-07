@@ -59,40 +59,20 @@ interface GeneratedImage {
 }
 
 const Home = () => {
-  // --- Configuration Constants ---
-  const MAX_IMAGE_HISTORY = 10; // Increased image history
-  const GENERATION_TIMEOUT = 15000; // Increased timeout
-  const VARIATION_COUNT = 6; // Increased variations
-  const MAX_RECENT_PROMPTS = 10;
-  const FALLBACK_IMAGES = [
-    "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
-    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
-    "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
-    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
-    "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
-    "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
-    "https://images.unsplash.com/photo-1690205682524-79b2e7508881?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-    "https://images.unsplash.com/photo-1687360440097-7c43ca908e56?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-  ];
-
   const [prompt, setPrompt] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("realistic");
-  const [dimensions, setDimensions] = useState({ width: 768, height: 768 }); // Default dimensions
-  const [resolution, setResolution] = useState(150); // Increased default resolution
+  const [dimensions, setDimensions] = useState({ width: 512, height: 512 });
+  const [resolution, setResolution] = useState(75);
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState("");
   const [imageHistory, setImageHistory] = useState<GeneratedImage[]>([]);
-  const [selectedModel, setSelectedModel] = useState(
-    "stable-diffusion-xl-turbo",
-  ); // More advanced model
-  const [selectedSampler, setSelectedSampler] = useState("dpmpp_2m_sde"); // Improved sampler
-  const [steps, setSteps] = useState(45); // Increased steps for better quality
+  const [selectedModel, setSelectedModel] = useState("stable-diffusion-xl");
+  const [selectedSampler, setSelectedSampler] = useState("euler-a");
+  const [steps, setSteps] = useState(30);
   const [seed, setSeed] = useState("");
-  const [negativePrompt, setNegativePrompt] = useState(
-    "blurry, distorted, artifacts, low resolution, watermark, text",
-  ); // Enhanced default negative prompt
-  const [guidanceScale, setGuidanceScale] = useState(9); // Fine-tuned guidance scale
+  const [negativePrompt, setNegativePrompt] = useState("");
+  const [guidanceScale, setGuidanceScale] = useState(7.5);
 
   // Save user preferences to local storage
   useEffect(() => {
@@ -118,10 +98,10 @@ const Home = () => {
       if (prompt) localStorage.setItem("lastPrompt", prompt);
       if (selectedStyle) localStorage.setItem("selectedStyle", selectedStyle);
       if (imageHistory.length > 0) {
-        // Only store the MAX_IMAGE_HISTORY most recent images to avoid quota issues
+        // Only store the 5 most recent images to avoid quota issues
         localStorage.setItem(
           "imageHistory",
-          JSON.stringify(imageHistory.slice(0, MAX_IMAGE_HISTORY)),
+          JSON.stringify(imageHistory.slice(0, 5)),
         );
       }
     } catch (error) {
@@ -163,93 +143,19 @@ const Home = () => {
   const [showDrawingTab, setShowDrawingTab] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [features, setFeatures] = useState({
-    enhanceDetails: true, // Enable by default
-    hdrEffect: true, // Enable by default
+    enhanceDetails: false,
+    hdrEffect: false,
     removeBackground: false,
-    upscale: true, // Enable by default
-    faceCorrection: true, // Enable by default
-    colorEnhancement: true, // New feature
-    textureDetail: true, // New feature
-    realisticLighting: true, // New feature
+    upscale: false,
+    faceCorrection: false,
   });
   // Track redo stack separately
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [variants, setVariants] = useState<string[]>([]);
 
-  const [availableFeatures, setAvailableFeatures] = useState([
-    "Dreamy",
-    "Vibrant",
-    "Noir",
-    "Cyberpunk",
-    "Watercolor",
-  ]);
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
-
-  // Function to handle random prompt generation
-  const handleGenerateRandomPrompt = () => {
-    const randomPrompts = [
-      "A breathtaking 8K render of a futuristic cityscape at night with neon lights reflecting on the wet streets. Cyberpunk style with dramatic and cinematic lighting.",
-      "A serene and photorealistic nature scene with golden sunlight filtering through ancient trees, creating a magical, ethereal atmosphere in 8K.",
-      "A whimsical and highly detailed fairy-tale scene with a cozy, hidden cottage nestled in an enchanted forest, with vibrant foliage, glowing mushrooms, and fireflies in 8K.",
-      "An ultra-detailed, majestic dragon perched atop a snow-capped mountain at sunset, rendered in a high-resolution, realistic style with dynamic lighting and dramatic clouds in 8K.",
-      "An awe-inspiring underwater scene with colorful coral reefs teeming with exotic fish and a sunken pirate ship, brought to life with vibrant hues, intricate details, and volumetric lighting in 8K.",
-      "A hyperrealistic portrait of a wise, old wizard with a long, flowing beard, wrinkles showing age and experience, and intense, magical eyes. 8K detail with subsurface scattering.",
-      "A surreal dreamscape featuring floating islands, gravity-defying waterfalls, and fantastical creatures rendered in a vibrant, otherworldly style with 8K clarity.",
-      "A steampunk airship soaring through the skies above a Victorian city, intricate mechanical details, gears, steam, and brass textures in stunning 8K resolution.",
-      "A hyperrealistic close-up of a blooming exotic flower with intricate petal details, dew drops, and vibrant colors, captured in stunning 8K macro photography.",
-    ];
-    const randomIndex = Math.floor(Math.random() * randomPrompts.length);
-    setPrompt(randomPrompts[randomIndex]);
-  };
-
-  // Function to generate image based on selected feature variants
-  const handleGenerateFeatureVariant = async (feature: string) => {
-    if (!prompt.trim()) return;
-
-    // Add feature to the prompt if not already selected
-    if (!selectedFeatures.includes(feature)) {
-      setSelectedFeatures((prev) => [...prev, feature]);
-      setPrompt((prevPrompt) => `${prevPrompt}, ${feature}`);
-    }
-
-    // If feature is already selected, remove it from the prompt
-    else {
-      setSelectedFeatures((prev) => prev.filter((f) => f !== feature));
-      setPrompt((prevPrompt) =>
-        prevPrompt.replace(new RegExp(`,?\\s*${feature}`, "i"), "").trim(),
-      );
-    }
-
-    // Generate image
-    await handleGenerateImage();
-  };
-
-  const showNotification = (message: string, type: "success" | "error") => {
-    const notification = document.createElement("div");
-    notification.style.position = "fixed";
-    notification.style.top = "20px";
-    notification.style.left = "50%";
-    notification.style.transform = "translateX(-50%)";
-    notification.style.backgroundColor =
-      type === "success" ? "rgba(0, 128, 0, 0.8)" : "rgba(255, 0, 0, 0.8)";
-    notification.style.color = "white";
-    notification.style.padding = "10px 20px";
-    notification.style.borderRadius = "5px";
-    notification.style.zIndex = "10000"; // Ensure it's on top
-    notification.textContent = message;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      document.body.removeChild(notification);
-    }, 3000);
-  };
   // Advanced image generation function with Gemini integration
   const handleGenerateImage = async () => {
-    if (!prompt.trim()) {
-      showNotification("Please enter a prompt.", "error");
-      return;
-    }
+    if (!prompt.trim()) return;
 
     // Save current image to previous versions if there is one
     if (generatedImage) {
@@ -297,30 +203,16 @@ const Home = () => {
       // Add feature-specific enhancements
       if (features.enhanceDetails) {
         enhancedPrompt +=
-          ", extremely detailed, intricate details, sharp focus, hyperrealism";
+          ", highly detailed, intricate details, sharp focus, hyperrealism, 8k resolution, perfect composition";
       }
 
       if (features.hdrEffect) {
-        enhancedPrompt +=
-          ", HDR, dramatic lighting, high dynamic range, vibrant colors, detailed shadows";
+        enhancedPrompt += ", HDR, dramatic lighting, high dynamic range";
       }
 
       if (features.faceCorrection) {
         enhancedPrompt +=
-          ", perfect face, detailed facial features, realistic skin texture, flawless skin";
-      }
-
-      if (features.colorEnhancement) {
-        enhancedPrompt += ", vibrant colors, enhanced color grading";
-      }
-
-      if (features.textureDetail) {
-        enhancedPrompt += ", high-resolution textures, detailed surface";
-      }
-
-      if (features.realisticLighting) {
-        enhancedPrompt +=
-          ", volumetric lighting, realistic shadows, cinematic illumination";
+          ", perfect face, detailed facial features, realistic skin texture";
       }
 
       // Add style-specific enhancements
@@ -336,14 +228,14 @@ const Home = () => {
 
       // Add tuning text for better results
       const tuningText =
-        ", ultra high resolution, 8K, professional lighting, cinematic, masterpiece, perfect composition, trending on artstation";
+        ", ultra high resolution, 10K, professional lighting, cinematic, masterpiece, unparalleled detail";
       fullPrompt += tuningText;
 
       // Generate image URL based on dimensions and seed
       // Use extended height to avoid watermark, will crop later
       const extendedHeight = dimensions.height * 1.2; // 20% taller to hide watermark
       // Always generate HD 2K images regardless of user settings
-      let imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=4k`; // Use 4K quality
+      let imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=2k`; // Always use 2K quality
 
       // Add seed if provided
       if (seed) {
@@ -365,11 +257,6 @@ const Home = () => {
         imageUrl += `&sampler=${selectedSampler}`;
       }
 
-      // Add the selected model
-      if (selectedModel) {
-        imageUrl += `&model=${selectedModel}`;
-      }
-
       console.log("Generating image with URL:", imageUrl);
 
       // Create a new image to load it
@@ -382,13 +269,21 @@ const Home = () => {
         if (isGenerating) {
           console.log("Image generation timeout, using fallback");
           // Use a fallback image if the generation is taking too long
+          const fallbackImages = [
+            "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
+            "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
+            "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
+            "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
+            "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
+            "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
+          ];
 
           // Deterministically select an image based on the prompt to simulate consistent generation
           const promptHash = prompt
             .split("")
             .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const imageIndex = promptHash % FALLBACK_IMAGES.length;
-          const selectedImage = FALLBACK_IMAGES[imageIndex];
+          const imageIndex = promptHash % fallbackImages.length;
+          const selectedImage = fallbackImages[imageIndex];
 
           const fallbackImg = new Image();
           fallbackImg.crossOrigin = "anonymous";
@@ -404,7 +299,7 @@ const Home = () => {
             }
           };
         }
-      }, GENERATION_TIMEOUT); // Increased timeout
+      }, 8000); // 8 second timeout
 
       const handleImageLoaded = (loadedImg) => {
         clearTimeout(timeoutId);
@@ -414,7 +309,10 @@ const Home = () => {
         const ctx = canvas.getContext("2d");
 
         // Set canvas size (crop height to remove watermark)
-        const cropHeight = Math.min(loadedImg.height, loadedImg.height * 0.83); // Crop 17% from bottom to remove watermark
+        const cropHeight = Math.min(
+          loadedImg.height,
+          loadedImg.height * 0.83,
+        ); // Crop 17% from bottom to remove watermark
         canvas.width = loadedImg.width;
         canvas.height = cropHeight;
 
@@ -442,16 +340,14 @@ const Home = () => {
           ctx.putImageData(imageData, 0, 0);
         }
 
-        if (features.upscale && dimensions.width < 2048) {
+        if (features.upscale && dimensions.width < 1024) {
           // Simulate upscaling by creating a larger canvas
           const upscaledCanvas = document.createElement("canvas");
-          upscaledCanvas.width = canvas.width * 2;
-          upscaledCanvas.height = canvas.height * 2;
+          upscaledCanvas.width = canvas.width * 4;  // Increased upscale factor
+          upscaledCanvas.height = canvas.height * 4; // Increased upscale factor
           const upscaledCtx = upscaledCanvas.getContext("2d");
 
-          // Draw the original image onto the larger canvas using bicubic interpolation
-          upscaledCtx.imageSmoothingEnabled = true;
-          upscaledCtx.imageSmoothingQuality = "high"; // Or 'low', 'medium'
+          // Draw the original image onto the larger canvas
           upscaledCtx.drawImage(
             canvas,
             0,
@@ -480,29 +376,13 @@ const Home = () => {
 
         // Add to recent prompts if not already there
         if (!recentPrompts.includes(prompt)) {
-          setRecentPrompts((prev) => [prompt, ...prev.slice(0, MAX_RECENT_PROMPTS)]);
+          setRecentPrompts((prev) => [prompt, ...prev.slice(0, 4)]);
         }
 
         console.log("Generated new image with prompt:", prompt);
 
         // Generate variants
         generateVariants();
-
-        // Save the generated image to history
-        const newImage: GeneratedImage = {
-          id: Date.now().toString(), // Use timestamp as ID
-          imageUrl: processedImageUrl,
-          prompt: prompt,
-          style: selectedStyle,
-          dimensions: `${dimensions.width}x${dimensions.height}`,
-          createdAt: new Date().toISOString(),
-          model: selectedModel,
-          negativePrompt: negativePrompt,
-          seed: seed,
-          guidanceScale: guidanceScale,
-          steps: steps,
-        };
-        setImageHistory((prevHistory) => [newImage, ...prevHistory]);
       };
 
       img.onload = function () {
@@ -512,13 +392,21 @@ const Home = () => {
       img.onerror = function () {
         console.error("Error loading image, using fallback");
         // Use a fallback image if the generation fails
+        const fallbackImages = [
+          "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
+          "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
+          "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
+          "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
+          "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
+          "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
+        ];
 
         // Deterministically select an image based on the prompt
         const promptHash = prompt
           .split("")
           .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const imageIndex = promptHash % FALLBACK_IMAGES.length;
-        const selectedImage = FALLBACK_IMAGES[imageIndex];
+        const imageIndex = promptHash % fallbackImages.length;
+        const selectedImage = fallbackImages[imageIndex];
 
         const fallbackImg = new Image();
         fallbackImg.crossOrigin = "anonymous";
@@ -537,7 +425,7 @@ const Home = () => {
     } catch (error) {
       console.error("Error generating image:", error);
       setIsGenerating(false);
-      showNotification("Image generation failed", "error");
+      alert("Image generation failed");
 
       // Remove the overlay in case of error
       const overlay = document.getElementById("generation-overlay");
@@ -552,10 +440,7 @@ const Home = () => {
 
   // Function to enhance prompt using Gemini API with fallback
   const handleEnhancePrompt = async () => {
-    if (!prompt.trim()) {
-      showNotification("Please enter a prompt.", "error");
-      return;
-    }
+    if (!prompt.trim()) return;
 
     setIsEnhancingPrompt(true);
 
@@ -581,6 +466,8 @@ const Home = () => {
           "sharp focus",
           "studio quality",
           "perfect composition",
+          "10k resolution",
+          "unparalleled detail"
         ];
 
         // Add random enhancement phrases that aren't already in the prompt
@@ -598,7 +485,7 @@ const Home = () => {
       }
     } catch (error) {
       console.error("Error enhancing prompt:", error);
-      showNotification("Failed to enhance prompt. Please try again.", "error");
+      alert("Failed to enhance prompt. Please try again.");
     } finally {
       setIsEnhancingPrompt(false);
     }
@@ -617,11 +504,12 @@ const Home = () => {
         console.error("Gemini API error, using fallback:", apiError);
         // Fallback to predefined prompts if API fails
         const imagePrompts = [
-          "A stunning landscape with dramatic lighting, mountains in the background and a serene lake in the foreground. Ultra-realistic 8K resolution with cinematic feel.",
-          "A detailed portrait with perfect lighting, shallow depth of field, and professional studio quality. High-resolution with natural skin tones and subsurface scattering in 8K.",
-          "An abstract digital artwork with vibrant colors and flowing shapes. High-contrast with sharp details and modern aesthetic in 8K.",
-          "A futuristic cityscape at night with neon lights, tall skyscrapers, and flying vehicles. Cyberpunk style with dramatic lighting in 8K.",
-          "A serene nature scene with sunlight filtering through trees, creating a magical atmosphere. Photorealistic quality with perfect composition in 8K.",
+          "A stunning landscape with dramatic lighting, mountains in the background and a serene lake in the foreground. Ultra-realistic 4K resolution with cinematic feel.",
+          "A detailed portrait with perfect lighting, shallow depth of field, and professional studio quality. High-resolution with natural skin tones.",
+          "An abstract digital artwork with vibrant colors and flowing shapes. High-contrast with sharp details and modern aesthetic.",
+          "A futuristic cityscape at night with neon lights, tall skyscrapers, and flying vehicles. Cyberpunk style with dramatic lighting.",
+          "A serene nature scene with sunlight filtering through trees, creating a magical atmosphere. Photorealistic quality with perfect composition.",
+          "A breathtaking landscape in 10k resolution, showcasing unparalleled detail and vibrant colors, under dramatic lighting.",
         ];
 
         // Select a random prompt from the list
@@ -634,10 +522,7 @@ const Home = () => {
       handleGenerateImage();
     } catch (error) {
       console.error("Error analyzing image:", error);
-      showNotification(
-        "Failed to analyze image. Using default prompt instead.",
-        "error",
-      );
+      alert("Failed to analyze image. Using default prompt instead.");
     } finally {
       setIsAnalyzingImage(false);
     }
@@ -668,11 +553,12 @@ const Home = () => {
         console.error("Gemini API error, using fallback:", apiError);
         // Fallback to predefined prompts if API fails
         const drawingPrompts = [
-          "A professional digital artwork based on a hand-drawn sketch, with detailed elements, vibrant colors, and professional composition in 8K. High-quality rendering with smooth lines and textures.",
-          "A polished illustration derived from a sketch, with enhanced details, professional coloring, and artistic style in 8K. Clean lines and perfect proportions.",
-          "A refined digital painting based on a rough sketch, with beautiful color gradients, detailed textures, and professional lighting effects in 8K.",
-          "An artistic rendering of a hand-drawn concept, transformed into a professional illustration with perfect proportions and vivid colors in 8K.",
-          "A sketch transformed into a masterful digital artwork, with enhanced details, dramatic lighting, and professional composition in 8K.",
+          "A professional digital artwork based on a hand-drawn sketch, with detailed elements, vibrant colors, and professional composition. High-quality rendering with smooth lines and textures.",
+          "A polished illustration derived from a sketch, with enhanced details, professional coloring, and artistic style. Clean lines and perfect proportions.",
+          "A refined digital painting based on a rough sketch, with beautiful color gradients, detailed textures, and professional lighting effects.",
+          "An artistic rendering of a hand-drawn concept, transformed into a professional illustration with perfect proportions and vivid colors.",
+          "A sketch transformed into a masterful digital artwork, with enhanced details, dramatic lighting, and professional composition.",
+          "A 10k resolution digital painting based on a hand-drawn sketch, with unparalleled details, vibrant colors, and professional composition"
         ];
 
         // Select a random prompt from the list
@@ -681,15 +567,26 @@ const Home = () => {
         setPrompt(randomPrompt);
       }
 
-      showNotification("Drawing processed successfully!", "success");
+      // Show success message
+      const successMessage = document.createElement("div");
+      successMessage.style.position = "fixed";
+      successMessage.style.top = "20px";
+      successMessage.style.left = "50%";
+      successMessage.style.transform = "translateX(-50%)";
+      successMessage.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
+      successMessage.style.color = "white";
+      successMessage.style.padding = "10px 20px";
+      successMessage.style.borderRadius = "5px";
+      successMessage.style.zIndex = "9999";
+      successMessage.textContent = "Drawing processed successfully!";
+      document.body.appendChild(successMessage);
+      setTimeout(() => document.body.removeChild(successMessage), 3000);
+
       setActiveFeature("text-to-image"); // Switch back to main tab
       handleGenerateImage();
     } catch (error) {
       console.error("Error generating from drawing:", error);
-      showNotification(
-        "Failed to process drawing. Using default prompt instead.",
-        "error",
-      );
+      alert("Failed to process drawing. Using default prompt instead.");
     } finally {
       setIsAnalyzingImage(false);
     }
@@ -745,14 +642,13 @@ const Home = () => {
         });
       } else {
         // Fallback for browsers that don't support Web Share API
-        showNotification(
+        alert(
           "Sharing is not available in your browser. Please download the image and share it manually.",
-          "error",
         );
       }
     } catch (error) {
       console.error("Error sharing image:", error);
-      showNotification("Error sharing image", "error");
+      alert("Error sharing image");
     }
   };
 
@@ -775,8 +671,11 @@ const Home = () => {
   };
 
   // Function to create variations of the current image
-  const generateVariants = async () => {
+  const handleCreateVariation = () => {
     if (!generatedImage || !prompt) return;
+
+    // Save current image to history
+    setPreviousVersions((prev) => [generatedImage, ...prev]);
 
     // Show loading overlay for variations
     const overlay = document.createElement("div");
@@ -806,452 +705,117 @@ const Home = () => {
     overlay.appendChild(spinner);
     overlay.appendChild(text);
     document.body.appendChild(overlay);
-    const variations: string[] = [];
+
+    // Generate 3-4 variations with different seeds and slight prompt modifications
+    const variations = [];
+    const variationCount = 4; // Generate 4 variations
+    let completedVariations = 0;
 
     // Create slight variations of the prompt
     const promptVariations = [
-      prompt + ", with a subtle change in lighting",
-      prompt + ", seen from a different angle",
-      prompt + ", re-imagined with a unique composition",
-      prompt + ", featuring a slight color variation",
-      prompt + ", with an alternate mood or atmosphere",
-      prompt + ", emphasizing a different element of the scene",
+      prompt + ", slightly different lighting",
+      prompt + ", alternative perspective",
+      prompt + ", different composition",
+      prompt + ", subtle color shift",
     ];
 
-    let completedVariations = 0;
-    const promises = [];
-    for (let i = 0; i < VARIATION_COUNT; i++) {
+    // Generate each variation
+    for (let i = 0; i < variationCount; i++) {
+      // Use a different seed for each variation
       const randomSeed = Math.floor(Math.random() * 1000000).toString();
+
+      // Create the variation URL with the modified prompt and random seed
       const variationPrompt = promptVariations[i];
+      const extendedHeight = dimensions.height * 1.2;
+      let variationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(variationPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=2k&seed=${randomSeed}`;
 
-      const variationImagePromise = new Promise<void>((resolve, reject) => {
-        const extendedHeight = dimensions.height * 1.2; // Ensure this is accessible
+      // Load the variation image
+      const variationImg = new Image();
+      variationImg.crossOrigin = "anonymous";
+      variationImg.src = variationUrl;
 
-        let variationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(variationPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=4k&seed=${randomSeed}`;
-
-        const variationImg = new Image();
-        variationImg.crossOrigin = "anonymous";
-
-        variationImg.onload = () => {
-          const canvas = document.createElement("canvas");
-    //       const ctx =
-    // // Fallback in case all image loads fail
-    // setTimeout(() => {
-    //   if (completedVariations < variationCount) {
-    //     console.log("Variation generation timeout, using fallback");
-
-    //     // Create a temporary canvas for processing
-    //     const canvas = document.createElement("canvas");
+      variationImg.onload = () => {
+        // Create a canvas to process the image (crop watermark if needed)
+        const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          const variationsOverlay =
-            document.getElementById("variations-overlay");
-          if (variationsOverlay) document.body.removeChild(variationsOverlay);
-          return;
-        }
 
-        // Load the current image
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = generatedImage;
-
-        img.onload = () => {
-          // Set canvas dimensions to match image
-          canvas.width = img.width;
-          canvas.height = img.height;
-
-          // Create fallback variations with different filters
-          const variationFilters = [
-            { brightness: 110, contrast: 120, saturation: 130, hue: 15 },
-            { brightness: 90, contrast: 110, saturation: 80, hue: -15 },
-            {
-              brightness: 100,
-              contrast: 130,
-              saturation: 110,
-              hue: 0,
-              sepia: 30,
-            },
-            { brightness: 105, contrast: 95, saturation: 120, hue: 30 },
-          ];
-
-          const fallbackVariations = [];
-
-          // Process each variation
-          variationFilters.forEach((filter) => {
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw original image
-            ctx.drawImage(img, 0, 0);
-
-            // Get image data for manipulation
-            const imageData = ctx.getImageData(
-              0,
-              0,
-              canvas.width,
-              canvas.height,
-            );
-            const data = imageData.data;
-
-            // Apply filter effects
-            for (let i = 0; i < data.length; i += 4) {
-              // Apply brightness
-              const brightnessRatio = filter.brightness / 100;
-              data[i] = Math.min(255, data[i] * brightnessRatio);
-              data[i + 1] = Math.min(255, data[i + 1] * brightnessRatio);
-              data[i + 2] = Math.min(255, data[i + 2] * brightnessRatio);
-
-              // Apply contrast
-              const contrastFactor = (filter.contrast / 100) * 2 - 1;
-              for (let j = 0; j < 3; j++) {
-                data[i + j] = Math.min(
-                  255,
-                  Math.max(0, (data[i + j] - 128) * (1 + contrastFactor) + 128),
-                );
-              }
-
-              // Apply saturation
-              const saturationRatio = filter.saturation / 100;
-              const gray =
-                0.2989 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-              data[i] = Math.min(
-                255,
-                Math.max(0, gray + (data[i] - gray) * saturationRatio),
-              );
-              data[i + 1] = Math.min(
-                255,
-                Math.max(0, gray + (data[i + 1] - gray) * saturationRatio),
-              );
-              data[i + 2] = Math.min(
-                255,
-                Math.max(0, gray + (data[i + 2] - gray) * saturationRatio),
-              );
-
-              // Apply hue rotation if specified
-              if (filter.hue) {
-                // Simplified hue rotation
-                const hueRotation = (filter.hue / 360) * 2 * Math.PI;
-                const U = Math.cos(hueRotation);
-                const W = Math.sin(hueRotation);
-
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-
-                data[i] = Math.min(
-                  255,
-                  Math.max(
-                    0,
-                    (0.299 + 0.701 * U + 0.168 * W) * r +
-                      (0.587 - 0.587 * U + 0.33 * W) * g +
-                      (0.114 - 0.114 * U - 0.497 * W) * b,
-                  ),
-                );
-                data[i + 1] = Math.min(
-                  255,
-                  Math.max(
-                    0,
-                    (0.299 - 0.299 * U - 0.328 * W) * r +
-                      (0.587 + 0.413 * U + 0.035 * W) * g +
-                      (0.114 - 0.114 * U + 0.292 * W) * b,
-                  ),
-                );
-                data[i + 2] = Math.min(
-                  255,
-                  Math.max(
-                    0,
-                    (0.299 - 0.3 * U + 1.25 * W) * r +
-                      (0.587 - 0.588 * U - 1.05 * W) * g +
-                      (0.114 + 0.886 * U - 0.203 * W) * b,
-                  ),
-                );
-              }
-
-              // Apply sepia if specified
-              if (filter.sepia) {
-                const sepiaIntensity = filter.sepia / 100;
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-
-                data[i] = Math.min(
-                  255,
-                  r * (1 - sepiaIntensity) +
-                    sepiaIntensity * (r * 0.393 + g * 0.769 + b * 0.189),
-                );
-                data[i + 1] = Math.min(
-                  255,
-                  g * (1 - sepiaIntensity) +
-                    sepiaIntensity * (r * 0.349 + g * 0.686 + b * 0.168),
-                );
-                data[i + 2] = Math.min(
-                  255,
-                  b * (1 - sepiaIntensity) +
-                    sepiaIntensity * (r * 0.272 + g * 0.534 + b * 0.131),
-                );
-              }
-            }
-
-            // Put modified image data back to canvas
-            ctx.putImageData(imageData, 0, 0);
-
-            // Get data URL and add to variations
-            const variantUrl = canvas.toDataURL("image/png");
-            fallbackVariations.push(variantUrl);
-          });
-
-          // Use the fallback variations
-          setVariants(fallbackVariations);
-          if (fallbackVariations.length > 0) {
-            setGeneratedImage(fallbackVariations[0]);
-          }
-
-          // Remove the overlay
-          const variationsOverlay =
-            document.getElementById("variations-overlay");
-          if (variationsOverlay) document.body.removeChild(variationsOverlay);
-        };
-
-        img.onerror = () => {
-          console.error("Error loading image for fallback variations");
-          const variationsOverlay =
-            document.getElementById("variations-overlay");
-          if (variationsOverlay) document.body.removeChild(variationsOverlay);
-        };
-      }
-    }, 15000); // 15 second timeout for all variations to load
-  };
-
-  // Function to upscale the current image
-  const handleUpscale = () => {
-    if (!generatedImage) return;
-
-    // Save current image and dimensions
-    setPreviousVersions((prev) => [generatedImage, ...prev]);
-    const currentDimensions = { ...dimensions };
-
-    // Double the dimensions for upscaling
-    setDimensions({
-      width: currentDimensions.width * 2,
-      height: currentDimensions.height * 2,
-    });
-
-    // Set upscale feature
-    setFeatures((prev) => ({
-      ...prev,
-      upscale: true,
-    }));
-
-    // Generate with the same prompt but larger dimensions
-    handleGenerateImage();
-
-    // Reset upscale feature after generation
-    setTimeout(() => {
-      setFeatures((prev) => ({
-        ...prev,
-        upscale: false,
-      }));
-    }, 1000);
-  };
-
-  const handleSelectHistoryImage = (image: GeneratedImage) => {
-    setGeneratedImage(image.imageUrl);
-    setPrompt(image.prompt);
-  };
-
-  const handleDownloadHistoryImage = (image: GeneratedImage) => {
-    // Create a temporary link element
-    const link = document.createElement("a");
-    link.href = image.imageUrl;
-    link.download = `history-image-${image.id}.png`;
-
-    // Append to body, click and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleShareHistoryImage = async (image: GeneratedImage) => {
-    try {
-      // Check if Web Share API is available
-      if (navigator.share) {
-        // Convert data URL to blob for sharing
-        const response = await fetch(image.imageUrl);
-        const blob = await response.blob();
-        const file = new File([blob], `history-image-${image.id}.png`, {
-          type: "image/png",
-        });
-
-        await navigator.share({
-          title: "AI Generated Image",
-          text: image.prompt,
-          files: [file],
-        });
-      } else {
-        // Fallback for browsers that don't support Web Share API
-        alert(
-          "Sharing is not available in your browser. Please download the image and share it manually.",
+        // Set canvas size (crop height to remove watermark)
+        const cropHeight = Math.min(
+          variationImg.height,
+          variationImg.height * 0.83,
         );
-      }
-    } catch (error) {
-      console.error("Error sharing image:", error);
-      alert("Error sharing image");
-    }
-  };
+        canvas.width = variationImg.width;
+        canvas.height = cropHeight;
 
-  const handleEditHistoryImage = (image: GeneratedImage) => {
-    setGeneratedImage(image.imageUrl);
-    setPrompt(image.prompt);
-    // Parse dimensions from string (e.g., "1024x768")
-    const [width, height] = image.dimensions.split("x").map(Number);
-    if (width && height) {
-      setDimensions({ width, height });
-    }
-  };
 
-  // Handle theme change - only using dark theme
-  const handleThemeChange = (theme: string) => {
-    setCurrentTheme("dark");
-    // Apply dark theme class to document
-    document.documentElement.classList.add("dark");
-    // Save theme preference to localStorage
-    localStorage.setItem("theme-preference", "dark");
-  };
+    // Draw the image with cropping
+    ctx.drawImage(
+      variationImg,
+      0,
+      0,
+      variationImg.width,
+      cropHeight,
+      0,
+      0,
+      variationImg.width,
+      cropHeight,
+    );
 
-  // Always use dark theme
-  useEffect(() => {
-    handleThemeChange("dark");
-  }, []);
+    // Get the processed image as data URL
+    const processedVariationUrl = canvas.toDataURL("image/png");
+    variations.push(processedVariationUrl);
 
-  // Add generated image to history when it's loaded and not generating
-  useEffect(() => {
-    if (generatedImage && !isGenerating) {
-      const newImage = {
-        id: Date.now().toString(),
-        imageUrl: generatedImage,
-        prompt: prompt,
-        style: selectedStyle,
-        dimensions: `${dimensions.width}x${dimensions.height}`,
-        createdAt: new Date().toISOString(),
-        model: selectedModel,
-        negativePrompt: negativePrompt,
-        seed: seed,
-        guidanceScale: guidanceScale,
-        steps: steps,
-      };
+    completedVariations++;
 
-      setImageHistory((prev) => [newImage, ...prev]);
-    }
-  }, [generatedImage, isGenerating]);
+    // When all variations are done
+    if (completedVariations === variationCount) {
+      // Update variants state
+      setVariants(variations);
 
-  // Clear redo stack when new image is generated
-  useEffect(() => {
-    if (isGenerating) {
-      setRedoStack([]);
-    }
-  }, [isGenerating]);
-
-  // Function to handle undo/redo
-  const handleUndo = () => {
-    if (previousVersions.length > 0) {
-      // Save current image
-      const currentVersion = generatedImage;
-
-      // Get the last version
-      const lastVersion = previousVersions[0];
-
-      // Update current image
-      setGeneratedImage(lastVersion);
-
-      // Remove the used version from history and add current as new history
-      setPreviousVersions((prev) => {
-        const newVersions = [...prev];
-        newVersions.shift();
-        if (currentVersion) {
-          setRedoStack((prevRedoStack) => [currentVersion, ...prevRedoStack]);
-          return newVersions;
-        }
-        return newVersions;
-      });
-    }
-  };
-
-  const handleRedo = () => {
-    if (redoStack.length > 0) {
-      // Get the first redo item
-      const redoItem = redoStack[0];
-
-      // Save current image to undo stack
-      if (generatedImage) {
-        setPreviousVersions((prev) => [generatedImage, ...prev]);
+      // Set the first variation as the current image
+      if (variations.length > 0) {
+        setGeneratedImage(variations[0]);
       }
 
-      // Set the redo item as current image
-      setGeneratedImage(redoItem);
-
-      // Remove the used item from redo stack
-      setRedoStack((prev) => prev.slice(1));
+      // Remove the overlay
+      const variationsOverlay =
+        document.getElementById("variations-overlay");
+      if (variationsOverlay) document.body.removeChild(variationsOverlay);
     }
   };
 
-  // Generate image variants
-  const generateVariants = () => {
-    if (!generatedImage) return;
+  variationImg.onerror = () => {
+    console.error("Error loading variation image");
+    completedVariations++;
 
-    // Show loading overlay for variants
-    const overlay = document.createElement("div");
-    overlay.id = "variants-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.8)";
-    overlay.style.zIndex = "9998";
-    overlay.style.display = "flex";
-    overlay.style.justifyContent = "center";
-    overlay.style.alignItems = "center";
-    overlay.style.flexDirection = "column";
+    // If all variations have been attempted (even with errors)
+    if (completedVariations === variationCount) {
+      // Update with whatever variations we have
+      if (variations.length > 0) {
+        setVariants(variations);
+        setGeneratedImage(variations[0]);
+      }
 
-    const spinner = document.createElement("div");
-    spinner.className =
-      "animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500";
+      // Remove the overlay
+      const variationsOverlay =
+        document.getElementById("variations-overlay");
+      if (variationsOverlay) document.body.removeChild(variationsOverlay);
+    }
+  };
+}
 
-    const text = document.createElement("p");
-    text.textContent = "Generating variants...";
-    text.style.color = "white";
-    text.style.marginTop = "20px";
-    text.style.fontSize = "18px";
-
-    overlay.appendChild(spinner);
-    overlay.appendChild(text);
-    document.body.appendChild(overlay);
-
-    // Create 6 variants with different filters
-    const variantFilters = [
-      { brightness: 110, contrast: 120, saturation: 130, hue: 15 },
-      { brightness: 90, contrast: 110, saturation: 80, hue: -15 },
-      { brightness: 100, contrast: 130, saturation: 110, hue: 0, sepia: 30 },
-      { brightness: 105, contrast: 95, saturation: 120, hue: 30 },
-      { brightness: 95, contrast: 125, saturation: 90, hue: -30, sepia: 15 },
-      {
-        brightness: 115,
-        contrast: 115,
-        saturation: 105,
-        hue: 5,
-        grayscale: 20,
-      },
-    ];
-
-    const newVariants: string[] = [];
+// Fallback in case all image loads fail
+setTimeout(() => {
+  if (completedVariations < variationCount) {
+    console.log("Variation generation timeout, using fallback");
 
     // Create a temporary canvas for processing
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) {
-      // Remove overlay if we can't get context
-      const variantsOverlay = document.getElementById("variants-overlay");
-      if (variantsOverlay) document.body.removeChild(variantsOverlay);
+      const variationsOverlay =
+        document.getElementById("variations-overlay");
+      if (variationsOverlay) document.body.removeChild(variationsOverlay);
       return;
     }
 
@@ -1265,7 +829,24 @@ const Home = () => {
       canvas.width = img.width;
       canvas.height = img.height;
 
-      variantFilters.forEach((filterSet) => {
+      // Create fallback variations with different filters
+      const variationFilters = [
+        { brightness: 110, contrast: 120, saturation: 130, hue: 15 },
+        { brightness: 90, contrast: 110, saturation: 80, hue: -15 },
+        {
+          brightness: 100,
+          contrast: 130,
+          saturation: 110,
+          hue: 0,
+          sepia: 30,
+        },
+        { brightness: 105, contrast: 95, saturation: 120, hue: 30 },
+      ];
+
+      const fallbackVariations = [];
+
+      // Process each variation
+      variationFilters.forEach((filter) => {
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1273,19 +854,24 @@ const Home = () => {
         ctx.drawImage(img, 0, 0);
 
         // Get image data for manipulation
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
         const data = imageData.data;
 
-        // Apply filter effects manually
+        // Apply filter effects
         for (let i = 0; i < data.length; i += 4) {
           // Apply brightness
-          const brightnessRatio = filterSet.brightness / 100;
+          const brightnessRatio = filter.brightness / 100;
           data[i] = Math.min(255, data[i] * brightnessRatio);
           data[i + 1] = Math.min(255, data[i + 1] * brightnessRatio);
           data[i + 2] = Math.min(255, data[i + 2] * brightnessRatio);
 
           // Apply contrast
-          const contrastFactor = (filterSet.contrast / 100) * 2 - 1;
+          const contrastFactor = (filter.contrast / 100) * 2 - 1;
           for (let j = 0; j < 3; j++) {
             data[i + j] = Math.min(
               255,
@@ -1294,7 +880,7 @@ const Home = () => {
           }
 
           // Apply saturation
-          const saturationRatio = filterSet.saturation / 100;
+          const saturationRatio = filter.saturation / 100;
           const gray =
             0.2989 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
           data[i] = Math.min(
@@ -1311,9 +897,9 @@ const Home = () => {
           );
 
           // Apply hue rotation if specified
-          if (filterSet.hue) {
-            // Hue rotation is complex, simplified implementation
-            const hueRotation = (filterSet.hue / 360) * 2 * Math.PI;
+          if (filter.hue) {
+            // Simplified hue rotation
+            const hueRotation = (filter.hue / 360) * 2 * Math.PI;
             const U = Math.cos(hueRotation);
             const W = Math.sin(hueRotation);
 
@@ -1351,8 +937,8 @@ const Home = () => {
           }
 
           // Apply sepia if specified
-          if (filterSet.sepia) {
-            const sepiaIntensity = filterSet.sepia / 100;
+          if (filter.sepia) {
+            const sepiaIntensity = filter.sepia / 100;
             const r = data[i];
             const g = data[i + 1];
             const b = data[i + 2];
@@ -1373,399 +959,797 @@ const Home = () => {
                 sepiaIntensity * (r * 0.272 + g * 0.534 + b * 0.131),
             );
           }
-
-          // Apply grayscale if specified
-          if (filterSet.grayscale) {
-            const grayscaleIntensity = filterSet.grayscale / 100;
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-
-            const grayValue = 0.2989 * r + 0.587 * g + 0.114 * b;
-
-            data[i] = Math.round(
-              r * (1 - grayscaleIntensity) + grayValue * grayscaleIntensity,
-            );
-            data[i + 1] = Math.round(
-              g * (1 - grayscaleIntensity) + grayValue * grayscaleIntensity,
-            );
-            data[i + 2] = Math.round(
-              b * (1 - grayscaleIntensity) + grayValue * grayscaleIntensity,
-            );
-          }
         }
 
         // Put modified image data back to canvas
         ctx.putImageData(imageData, 0, 0);
 
-        // Get data URL and add to variants
+        // Get data URL and add to variations
         const variantUrl = canvas.toDataURL("image/png");
-        newVariants.push(variantUrl);
+        fallbackVariations.push(variantUrl);
       });
 
-      // Update variants state
-      setVariants(newVariants);
+      // Use the fallback variations
+      setVariants(fallbackVariations);
+      if (fallbackVariations.length > 0) {
+        setGeneratedImage(fallbackVariations[0]);
+      }
 
       // Remove the overlay
-      const variantsOverlay = document.getElementById("variants-overlay");
-      if (variantsOverlay) document.body.removeChild(variantsOverlay);
+      const variationsOverlay =
+        document.getElementById("variations-overlay");
+      if (variationsOverlay) document.body.removeChild(variationsOverlay);
     };
 
-    // Handle image loading error
     img.onerror = () => {
-      console.error("Error loading image for variants");
-      // Remove the overlay
-      const variantsOverlay = document.getElementById("variants-overlay");
-      if (variantsOverlay) document.body.removeChild(variantsOverlay);
+      console.error("Error loading image for fallback variations");
+      const variationsOverlay =
+        document.getElementById("variations-overlay");
+      if (variationsOverlay) document.body.removeChild(variationsOverlay);
     };
-  };
+  }
+}, 15000); // 15 second timeout for all variations to load
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
 
-  const [activeFeature, setActiveFeature] = useState("text-to-image");
-  const [isAdmin, setIsAdmin] = useState(false);
+};
 
-  // Define Label component with proper TypeScript typing
-  const Label = ({
-    htmlFor,
-    children,
-  }: {
-    htmlFor: string;
-    children: React.ReactNode;
-  }) => (
-    <label htmlFor={htmlFor} className="block text-sm font-medium">
-      {children}
-    </label>
-  );
+// Function to upscale the current image
+const handleUpscale = () => {
+if (!generatedImage) return;
 
-  return isAdmin ? (
-    <AdminPanel theme="dark" />
-  ) : (
-    <div className="min-h-screen dark bg-black flex flex-col md:flex-row">
-      {/* Mobile Feature Selector */}
-      <div className="md:hidden bg-black text-white p-3 border-b border-gray-800 overflow-x-auto sticky top-0 z-40">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-lg font-bold">AI Image Generator</h1>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setShowChatbot(true)}
-              className="p-2 rounded-full bg-gray-800"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setShowHistorySidebar(!showHistorySidebar)}
-              className="p-2 rounded-full bg-gray-800"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <circle cx="12" cy="10" r="3" />
-                <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div className="flex space-x-2 overflow-x-auto pb-1">
-          {[
-            { id: "text-to-image", name: "Text to Image", icon: "📝" },
-            { id: "basic-drawing", name: "Drawing", icon: "✏️" },
-            { id: "styles", name: "Styles", icon: "🎨" },
-            { id: "artistic", name: "Filters", icon: "🖼️" },
-            { id: "3d-model", name: "3D Model", icon: "🧊" },
-            { id: "history", name: "History", icon: "📚" },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveFeature(item.id)}
-              className={`px-3 py-2 rounded-md text-sm whitespace-nowrap ${activeFeature === item.id ? "bg-gray-800" : "bg-gray-900"}`}
-            >
-              <span className="mr-1">{item.icon}</span>
-              {item.name}
-            </button>
-          ))}
-        </div>
-      </div>
+// Save current image and dimensions
+setPreviousVersions((prev) => [generatedImage, ...prev]);
+const currentDimensions = { ...dimensions };
 
-      {/* Features Sidebar - Hidden on mobile, shown as a horizontal menu */}
-      <div className="md:block hidden">
-        <Sidebar
-          onSelectFeature={setActiveFeature}
-          activeFeature={activeFeature}
-        />
-      </div>
+// Double the dimensions for upscaling
+setDimensions({
+  width: currentDimensions.width * 2,
+  height: currentDimensions.height * 2,
+});
 
-      <div className="flex-1 flex flex-col min-h-screen relative pt-0 md:pt-0">
-        {/* AdSense Ad Banner - Removed to fix error */}
+// Set upscale feature
+setFeatures((prev) => ({
+  ...prev,
+  upscale: true,
+}));
 
-        <LoadingOverlay
-          isVisible={isAnalyzingImage || isEnhancingPrompt}
-          message={
-            isAnalyzingImage ? "Processing image..." : "Enhancing prompt..."
-          }
-          theme={currentTheme}
-        />
-        <div className="sticky top-0 z-50 hidden md:block">
-          <Header
-            title="AI Image Generator"
-            onThemeChange={handleThemeChange}
-            currentTheme="dark"
-            onOpenHelp={() => setShowChatbot(true)}
-            onOpenSettings={() => setShowSettingsDialog(true)}
-            onOpenProfile={() => setShowHistorySidebar(!showHistorySidebar)}
-          />
-        </div>
+// Generate with the same prompt but larger dimensions
+handleGenerateImage();
 
-        <main className="container mx-auto px-2 md:px-4 py-2 md:py-8 max-w-7xl">
+// Reset upscale feature after generation
+setTimeout(() => {
+  setFeatures((prev) => ({
+    ...prev,
+    upscale: false,
+  }));
+}, 1000);
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+const handleSelectHistoryImage = (image: GeneratedImage) => {
+setGeneratedImage(image.imageUrl);
+setPrompt(image.prompt);
+};
+
+const handleDownloadHistoryImage = (image: GeneratedImage) => {
+// Create a temporary link element
+const link = document.createElement("a");
+link.href = image.imageUrl;
+link.download = history-image-${image.id}.png;
+
+// Append to body, click and remove
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+const handleShareHistoryImage = async (image: GeneratedImage) => {
+try {
+// Check if Web Share API is available
+if (navigator.share) {
+// Convert data URL to blob for sharing
+const response = await fetch(image.imageUrl);
+const blob = await response.blob();
+const file = new File([blob], history-image-${image.id}.png, {
+type: "image/png",
+});
+
+await navigator.share({
+      title: "AI Generated Image",
+      text: image.prompt,
+      files: [file],
+    });
+  } else {
+    // Fallback for browsers that don't support Web Share API
+    alert(
+      "Sharing is not available in your browser. Please download the image and share it manually.",
+    );
+  }
+} catch (error) {
+  console.error("Error sharing image:", error);
+  alert("Error sharing image");
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+const handleEditHistoryImage = (image: GeneratedImage) => {
+setGeneratedImage(image.imageUrl);
+setPrompt(image.prompt);
+// Parse dimensions from string (e.g., "1024x768")
+const [width, height] = image.dimensions.split("x").map(Number);
+if (width && height) {
+setDimensions({ width, height });
+}
+};
+
+// Handle theme change - only using dark theme
+const handleThemeChange = (theme: string) => {
+setCurrentTheme("dark");
+// Apply dark theme class to document
+document.documentElement.classList.add("dark");
+// Save theme preference to localStorage
+localStorage.setItem("theme-preference", "dark");
+};
+
+// Always use dark theme
+useEffect(() => {
+handleThemeChange("dark");
+}, []);
+
+// Add generated image to history when it's loaded and not generating
+useEffect(() => {
+if (generatedImage && !isGenerating) {
+const newImage = {
+id: Date.now().toString(),
+imageUrl: generatedImage,
+prompt: prompt,
+style: selectedStyle,
+dimensions: ${dimensions.width}x${dimensions.height},
+createdAt: new Date().toISOString(),
+model: selectedModel,
+negativePrompt: negativePrompt,
+seed: seed,
+guidanceScale: guidanceScale,
+steps: steps,
+};
+
+setImageHistory((prev) => [newImage, ...prev]);
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+}, [generatedImage, isGenerating]);
+
+// Clear redo stack when new image is generated
+useEffect(() => {
+if (isGenerating) {
+setRedoStack([]);
+}
+}, [isGenerating]);
+
+// Function to handle undo/redo
+const handleUndo = () => {
+if (previousVersions.length > 0) {
+// Save current image
+const currentVersion = generatedImage;
+
+// Get the last version
+  const lastVersion = previousVersions[0];
+
+  // Update current image
+  setGeneratedImage(lastVersion);
+
+  // Remove the used version from history and add current as new history
+  setPreviousVersions((prev) => {
+    const newVersions = [...prev];
+    newVersions.shift();
+    if (currentVersion) {
+      setRedoStack((prevRedoStack) => [currentVersion, ...prevRedoStack]);
+      return newVersions;
+    }
+    return newVersions;
+  });
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+const handleRedo = () => {
+if (redoStack.length > 0) {
+// Get the first redo item
+const redoItem = redoStack[0];
+
+// Save current image to undo stack
+  if (generatedImage) {
+    setPreviousVersions((prev) => [generatedImage, ...prev]);
+  }
+
+  // Set the redo item as current image
+  setGeneratedImage(redoItem);
+
+  // Remove the used item from redo stack
+  setRedoStack((prev) => prev.slice(1));
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+// Generate image variants
+const generateVariants = () => {
+if (!generatedImage) return;
+
+// Show loading overlay for variants
+const overlay = document.createElement("div");
+overlay.id = "variants-overlay";
+overlay.style.position = "fixed";
+overlay.style.top = "0";
+overlay.style.left = "0";
+overlay.style.width = "100%";
+overlay.style.height = "100%";
+overlay.style.backgroundColor = "rgba(0,0,0,0.8)";
+overlay.style.zIndex = "9998";
+overlay.style.display = "flex";
+overlay.style.justifyContent = "center";
+overlay.style.alignItems = "center";
+overlay.style.flexDirection = "column";
+
+const spinner = document.createElement("div");
+spinner.className =
+  "animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500";
+
+const text = document.createElement("p");
+text.textContent = "Generating variants...";
+text.style.color = "white";
+text.style.marginTop = "20px";
+text.style.fontSize = "18px";
+
+overlay.appendChild(spinner);
+overlay.appendChild(text);
+document.body.appendChild(overlay);
+
+// Create 6 variants with different filters
+const variantFilters = [
+  { brightness: 110, contrast: 120, saturation: 130, hue: 15 },
+  { brightness: 90, contrast: 110, saturation: 80, hue: -15 },
+  { brightness: 100, contrast: 130, saturation: 110, hue: 0, sepia: 30 },
+  { brightness: 105, contrast: 95, saturation: 120, hue: 30 },
+  { brightness: 95, contrast: 125, saturation: 90, hue: -30, sepia: 15 },
+  {
+    brightness: 115,
+    contrast: 115,
+    saturation: 105,
+    hue: 5,
+    grayscale: 20,
+  },
+];
+
+const newVariants: string[] = [];
+
+// Create a temporary canvas for processing
+const canvas = document.createElement("canvas");
+const ctx = canvas.getContext("2d");
+if (!ctx) {
+  // Remove overlay if we can't get context
+  const variantsOverlay = document.getElementById("variants-overlay");
+  if (variantsOverlay) document.body.removeChild(variantsOverlay);
+  return;
+}
+
+// Load the current image
+const img = new Image();
+img.crossOrigin = "anonymous";
+img.src = generatedImage;
+
+img.onload = () => {
+  // Set canvas dimensions to match image
+  canvas.width = img.width;
+  canvas.height = img.height;
+
+  variantFilters.forEach((filterSet) => {
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw original image
+    ctx.drawImage(img, 0, 0);
+
+    // Get image data for manipulation
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // Apply filter effects manually
+    for (let i = 0; i < data.length; i += 4) {
+      // Apply brightness
+      const brightnessRatio = filterSet.brightness / 100;
+      data[i] = Math.min(255, data[i] * brightnessRatio);
+      data[i + 1] = Math.min(255, data[i + 1] * brightnessRatio);
+      data[i + 2] = Math.min(255, data[i + 2] * brightnessRatio);
+
+      // Apply contrast
+      const contrastFactor = (filterSet.contrast / 100) * 2 - 1;
+      for (let j = 0; j < 3; j++) {
+        data[i + j] = Math.min(
+          255,
+          Math.max(0, (data[i + j] - 128) * (1 + contrastFactor) + 128),
+        );
+      }
+
+      // Apply saturation
+      const saturationRatio = filterSet.saturation / 100;
+      const gray =
+        0.2989 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      data[i] = Math.min(
+        255,
+        Math.max(0, gray + (data[i] - gray) * saturationRatio),
+      );
+      data[i + 1] = Math.min(
+        255,
+        Math.max(0, gray + (data[i + 1] - gray) * saturationRatio),
+      );
+      data[i + 2] = Math.min(
+        255,
+        Math.max(0, gray + (data[i + 2] - gray) * saturationRatio),
+      );
+
+      // Apply hue rotation if specified
+      if (filterSet.hue) {
+        // Hue rotation is complex, simplified implementation
+        const hueRotation = (filterSet.hue / 360) * 2 * Math.PI;
+        const U = Math.cos(hueRotation);
+        const W = Math.sin(hueRotation);
+
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        data[i] = Math.min(
+          255,
+          Math.max(
+            0,
+            (0.299 + 0.701 * U + 0.168 * W) * r +
+              (0.587 - 0.587 * U + 0.33 * W) * g +
+              (0.114 - 0.114 * U - 0.497 * W) * b,
+          ),
+        );
+        data[i + 1] = Math.min(
+          255,
+          Math.max(
+            0,
+            (0.299 - 0.299 * U - 0.328 * W) * r +
+              (0.587 + 0.413 * U + 0.035 * W) * g +
+              (0.114 - 0.114 * U + 0.292 * W) * b,
+          ),
+        );
+        data[i + 2] = Math.min(
+          255,
+          Math.max(
+            0,
+            (0.299 - 0.3 * U + 1.25 * W) * r +
+              (0.587 - 0.588 * U - 1.05 * W) * g +
+              (0.114 + 0.886 * U - 0.203 * W) * b,
+          ),
+        );
+      }
+
+      // Apply sepia if specified
+      if (filterSet.sepia) {
+        const sepiaIntensity = filterSet.sepia / 100;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        data[i] = Math.min(
+          255,
+          r * (1 - sepiaIntensity) +
+            sepiaIntensity * (r * 0.393 + g * 0.769 + b * 0.189),
+        );
+        data[i + 1] = Math.min(
+          255,
+          g * (1 - sepiaIntensity) +
+            sepiaIntensity * (r * 0.349 + g * 0.686 + b * 0.168),
+        );
+        data[i + 2] = Math.min(
+          255,
+          b * (1 - sepiaIntensity) +
+            sepiaIntensity * (r * 0.272 + g * 0.534 + b * 0.131),
+        );
+      }
+
+      // Apply grayscale if specified
+      if (filterSet.grayscale) {
+        const grayscaleIntensity = filterSet.grayscale / 100;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        const grayValue = 0.2989 * r + 0.587 * g + 0.114 * b;
+
+        data[i] = Math.round(
+          r * (1 - grayscaleIntensity) + grayValue * grayscaleIntensity,
+        );
+        data[i + 1] = Math.round(
+          g * (1 - grayscaleIntensity) + grayValue * grayscaleIntensity,
+        );
+        data[i + 2] = Math.round(
+          b * (1 - grayscaleIntensity) + grayValue * grayscaleIntensity,
+        );
+      }
+    }
+
+    // Put modified image data back to canvas
+    ctx.putImageData(imageData, 0, 0);
+
+    // Get data URL and add to variants
+    const variantUrl = canvas.toDataURL("image/png");
+    newVariants.push(variantUrl);
+  });
+
+  // Update variants state
+  setVariants(newVariants);
+
+  // Remove the overlay
+  const variantsOverlay = document.getElementById("variants-overlay");
+  if (variantsOverlay) document.body.removeChild(variantsOverlay);
+};
+
+// Handle image loading error
+img.onerror = () => {
+  console.error("Error loading image for variants");
+  // Remove the overlay
+  const variantsOverlay = document.getElementById("variants-overlay");
+  if (variantsOverlay) document.body.removeChild(variantsOverlay);
+};
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+const [activeFeature, setActiveFeature] = useState("text-to-image");
+const [isAdmin, setIsAdmin] = useState(false);
+
+// Define Label component with proper TypeScript typing
+const Label = ({
+htmlFor,
+children,
+}: {
+htmlFor: string;
+children: React.ReactNode;
+}) => (
+<label htmlFor={htmlFor} className="block text-sm font-medium">
+{children}
+</label>
+);
+
+return isAdmin ? (
+<AdminPanel theme="dark" />
+) : (
+<div className="min-h-screen dark bg-black flex flex-col md:flex-row">
+{/* Mobile Feature Selector */}
+<div className="md:hidden bg-black text-white p-3 border-b border-gray-800 overflow-x-auto sticky top-0 z-40">
+<div className="flex justify-between items-center mb-2">
+<h1 className="text-lg font-bold">AI Image Generator</h1>
+<div className="flex space-x-2">
+<button
+onClick={() => setShowChatbot(true)}
+className="p-2 rounded-full bg-gray-800"
+>
+<svg
+xmlns="http://www.w3.org/2000/svg"
+width="20"
+height="20"
+viewBox="0 0 24 24"
+fill="none"
+stroke="currentColor"
+strokeWidth="2"
+strokeLinecap="round"
+strokeLinejoin="round"
+>
+<circle cx="12" cy="12" r="10" />
+<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+<line x1="12" y1="17" x2="12.01" y2="17" />
+</svg>
+</button>
+<button
+onClick={() => setShowHistorySidebar(!showHistorySidebar)}
+className="p-2 rounded-full bg-gray-800"
+>
+<svg
+xmlns="http://www.w3.org/2000/svg"
+width="20"
+height="20"
+viewBox="0 0 24 24"
+fill="none"
+stroke="currentColor"
+strokeWidth="2"
+strokeLinecap="round"
+strokeLinejoin="round"
+>
+<circle cx="12" cy="12" r="10" />
+<circle cx="12" cy="10" r="3" />
+<path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+</svg>
+</button>
+</div>
+</div>
+<div className="flex space-x-2 overflow-x-auto pb-1">
+{[
+{ id: "text-to-image", name: "Text to Image", icon: "📝" },
+{ id: "basic-drawing", name: "Drawing", icon: "✏️" },
+{ id: "styles", name: "Styles", icon: "🎨" },
+{ id: "artistic", name: "Filters", icon: "🖼️" },
+{ id: "3d-model", name: "3D Model", icon: "🧊" },
+{ id: "history", name: "History", icon: "📚" },
+].map((item) => (
+<button
+key={item.id}
+onClick={() => setActiveFeature(item.id)}
+className={px-3 py-2 rounded-md text-sm whitespace-nowrap ${activeFeature === item.id ? "bg-gray-800" : "bg-gray-900"}}
+>
+<span className="mr-1">{item.icon}</span>
+{item.name}
+</button>
+))}
+</div>
+</div>
+
+{/* Features Sidebar - Hidden on mobile, shown as a horizontal menu */}
+  <div className="md:block hidden">
+    <Sidebar
+      onSelectFeature={setActiveFeature}
+      activeFeature={activeFeature}
+    />
+  </div>
+
+  <div className="flex-1 flex flex-col min-h-screen relative pt-0 md:pt-0">
+    {/* AdSense Ad Banner - Removed to fix error */}
+
+    <LoadingOverlay
+      isVisible={isAnalyzingImage || isEnhancingPrompt}
+      message={
+        isAnalyzingImage ? "Processing image..." : "Enhancing prompt..."
+      }
+      theme={currentTheme}
+    />
+    <div className="sticky top-0 z-50 hidden md:block">
+      <Header
+        title="AI Image Generator"
+        onThemeChange={handleThemeChange}
+        currentTheme="dark"
+        onOpenHelp={() => setShowChatbot(true)}
+        onOpenSettings={() => setShowSettingsDialog(true)}
+        onOpenProfile={() => setShowHistorySidebar(!showHistorySidebar)}
+      />
+    </div>
+
+    <main className="container mx-auto px-2 md:px-4 py-2 md:py-8 max-w-7xl">
+      <div className="space-y-8">
+        {/* Content based on active feature */}
+        {activeFeature === "text-to-image" && (
           <div className="space-y-8">
-            {/* Content based on active feature */}
-            {activeFeature === "text-to-image" && (
-              <div className="space-y-8">
-                {/* Prompt Input Section */}
-                <section>
-                  <PromptInputSection
-                    prompt={prompt}
-                    onPromptChange={setPrompt}
-                    theme="dark"
-                    recentPrompts={[]}
-                    onEnhancePrompt={handleEnhancePrompt}
-                    onImageUpload={handleImageUpload}
-                  />
-                  <div className="flex justify-between mt-4">
-                    <Button
-                      variant="outline"
-                      onClick={handleGenerateRandomPrompt}
-                    >
-                      Generate Random Prompt
-                    </Button>
-                  </div>
-                </section>
-              </div>
-            )}
+            {/* Prompt Input Section */}
+            <section>
+              <PromptInputSection
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                theme="dark"
+                recentPrompts={[]}
+                onEnhancePrompt={handleEnhancePrompt}
+                onImageUpload={handleImageUpload}
+              />
+            </section>
+          </div>
+        )}
 
-            {activeFeature === "basic-drawing" && (
-              <div className="space-y-8">
-                {/* Basic Drawing Canvas */}
-                <section>
-                  <DrawingCanvas
+        {activeFeature === "basic-drawing" && (
+          <div className="space-y-8">
+            {/* Basic Drawing Canvas */}
+            <section>
+              <DrawingCanvas
+                onGenerateFromDrawing={handleGenerateFromDrawing}
+                theme="dark"
+              />
+            </section>
+          </div>
+        )}
+
+        {activeFeature === "advanced-drawing" && (
+          <div className="space-y-8">
+            {/* Advanced Drawing Tools */}
+            <section>
+              <ErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div className="w-full h-64 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                  }
+                >
+                  <AdvancedDrawingTools
                     onGenerateFromDrawing={handleGenerateFromDrawing}
                     theme="dark"
                   />
-                </section>
-              </div>
-            )}
+                </Suspense>
+              </ErrorBoundary>
+            </section>
+          </div>
+        )}
 
-            {activeFeature === "advanced-drawing" && (
-              <div className="space-y-8">
-                {/* Advanced Drawing Tools */}
-                <section>
-                  <ErrorBoundary>
-                    <Suspense
-                      fallback={
-                        <div className="w-full h-64 flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                        </div>
-                      }
-                    >
-                      <AdvancedDrawingTools
-                        onGenerateFromDrawing={handleGenerateFromDrawing}
-                        theme="dark"
-                      />
-                    </Suspense>
-                  </ErrorBoundary>
-                </section>
-              </div>
-            )}
-
-            {activeFeature === "styles" && (
-              <div className="space-y-8">
-                {/* AI Style Presets */}
-                <section>
-                  <ErrorBoundary>
-                    <Suspense
-                      fallback={
-                        <div className="w-full h-64 flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                        </div>
-                      }
-                    >
-                      <AIStylePresets
-                        onSelectPreset={(preset) => {
-                          setPrompt(preset.prompt);
-                          setSelectedStyle(preset.id);
-                        }}
-                        theme="dark"
-                      />
-                    </Suspense>
-                  </ErrorBoundary>
-                </section>
-              </div>
-            )}
-
-            {activeFeature === "artistic" && (
-              <div className="space-y-8">
-                {/* Advanced Image Filters - Artistic Tab */}
-                <section>
-                  <ErrorBoundary>
-                    <Suspense
-                      fallback={
-                        <div className="w-full h-64 flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                        </div>
-                      }
-                    >
-                      <AdvancedImageFilters
-                        onApplyFilter={(filterType, settings) => {
-                          try {
-                            console.log(
-                              "Applying filters:",
-                              filterType,
-                              settings,
-                            );
-                            if (generatedImage) {
-                              setPreviousVersions((prev) => [
-                                generatedImage,
-                                ...prev,
-                              ]);
-                              handleModify();
-                            }
-                          } catch (error) {
-                            console.error("Error applying filters:", error);
-                            alert(
-                              "There was an error applying filters. Please try again.",
-                            );
-                          }
-                        }}
-                        theme="dark"
-                      />
-                    </Suspense>
-                  </ErrorBoundary>
-                </section>
-              </div>
-            )}
-
-            {activeFeature === "3d-model" && (
-              <div className="space-y-8">
-                {/* 3D Model Viewer */}
-                <section>
-                  <ErrorBoundary>
-                    <Suspense
-                      fallback={
-                        <div className="w-full h-64 flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                        </div>
-                      }
-                    >
-                      <ThreeDModelViewer
-                        theme="dark"
-                        onExport={(format) => {
-                          console.log(`Exporting 3D model as ${format}`);
-                        }}
-                      />
-                    </Suspense>
-                  </ErrorBoundary>
-                </section>
-              </div>
-            )}
-
-            {activeFeature === "history" && (
-              <div className="space-y-8">
-                {/* Image History Gallery */}
-                <section>
-                  <ImageHistoryGallery
-                    images={imageHistory}
-                    onSelectImage={handleSelectHistoryImage}
-                    onDownloadImage={handleDownloadHistoryImage}
-                    onShareImage={handleShareHistoryImage}
-                    onEditImage={handleEditHistoryImage}
+        {activeFeature === "styles" && (
+          <div className="space-y-8">
+            {/* AI Style Presets */}
+            <section>
+              <ErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div className="w-full h-64 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                  }
+                >
+                  <AIStylePresets
+                    onSelectPreset={(preset) => {
+                      setPrompt(preset.prompt);
+                      setSelectedStyle(preset.id);
+                    }}
+                    theme="dark"
                   />
-                </section>
-              </div>
-            )}
+                </Suspense>
+              </ErrorBoundary>
+            </section>
+          </div>
+        )}
 
-            {/* Customization Panel - only show for text-to-image */}
-            {activeFeature === "text-to-image" && (
-              <section>
-                <CustomizationPanel
-                  selectedStyle={selectedStyle}
-                  dimensions={dimensions}
-                  resolution={resolution}
-                  aspectRatio={aspectRatio}
-                  selectedModel={selectedModel}
-                  selectedSampler={selectedSampler}
-                  steps={steps}
-                  seed={seed}
-                  negativePrompt={negativePrompt}
-                  guidanceScale={guidanceScale}
-                  features={features}
-                  theme="dark"
-                  onStyleChange={handleStyleChange}
-                  onDimensionsChange={handleDimensionsChange}
-                  onResolutionChange={handleResolutionChange}
-                  onAspectRatioChange={handleAspectRatioChange}
-                  onModelChange={setSelectedModel}
-                  onSamplerChange={setSelectedSampler}
-                  onStepsChange={setSteps}
-                  onSeedChange={setSeed}
-                  onNegativePromptChange={setNegativePrompt}
-                  onGuidanceScaleChange={setGuidanceScale}
-                  onToggleFeature={(feature, enabled) => {
-                    setFeatures((prev) => ({
-                      ...prev,
-                      [feature]: enabled,
-                    }));
-                  }}
-                />
-              </section>
-            )}
-
-            {/* Feature Variants - only show for text-to-image */}
-            {activeFeature === "text-to-image" && (
-              <section>
-                <h2 className="text-lg font-semibold mb-4">
-                  Apply Feature Variants
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {availableFeatures.map((feature) => (
-                    <Button
-                      key={feature}
-                      variant={
-                        selectedFeatures.includes(feature)
-                          ? "contained"
-                          : "outline"
+        {activeFeature === "artistic" && (
+          <div className="space-y-8">
+            {/* Advanced Image Filters - Artistic Tab */}
+            <section>
+              <ErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div className="w-full h-64 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                  }
+                >
+                  <AdvancedImageFilters
+                    onApplyFilter={(filterType, settings) => {
+                      try {
+                        console.log(
+                          "Applying filters:",
+                          filterType,
+                          settings,
+                        );
+                        if (generatedImage) {
+                          setPreviousVersions((prev) => [
+                            generatedImage,
+                            ...prev,
+                          ]);
+                          handleModify();
+                        }
+                      } catch (error) {
+                        console.error("Error applying filters:", error);
+                        alert(
+                          "There was an error applying filters. Please try again.",
+                        );
                       }
-                      onClick={() => handleGenerateFeatureVariant(feature)}
-className={selectedFeatures.includes(feature)
-? "bg-blue-500 text-white"
-: "text-blue-400 border-blue-400 hover:bg-blue-500 hover:text-white"}
->
-{feature}
-</Button>
-))}
-</div>
-</section>
-)}        {/* Payment Plans Section */}
+                    }}
+                    theme="dark"
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            </section>
+          </div>
+        )}
+
+        {activeFeature === "3d-model" && (
+          <div className="space-y-8">
+            {/* 3D Model Viewer */}
+            <section>
+              <ErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div className="w-full h-64 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                  }
+                >
+                  <ThreeDModelViewer
+                    theme="dark"
+                    onExport={(format) => {
+                      console.log(`Exporting 3D model as ${format}`);
+                    }}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            </section>
+          </div>
+        )}
+
+        {activeFeature === "history" && (
+          <div className="space-y-8">
+            {/* Image History Gallery */}
+            <section>
+              <ImageHistoryGallery
+                images={imageHistory}
+                onSelectImage={handleSelectHistoryImage}
+                onDownloadImage={handleDownloadHistoryImage}
+                onShareImage={handleShareHistoryImage}
+                onEditImage={handleEditHistoryImage}
+              />
+            </section>
+          </div>
+        )}
+
+        {/* Customization Panel - only show for text-to-image */}
+        {activeFeature === "text-to-image" && (
+          <section>
+            <CustomizationPanel
+              selectedStyle={selectedStyle}
+              dimensions={dimensions}
+              resolution={resolution}
+              aspectRatio={aspectRatio}
+              selectedModel={selectedModel}
+              selectedSampler={selectedSampler}
+              steps={steps}
+              seed={seed}
+              negativePrompt={negativePrompt}
+              guidanceScale={guidanceScale}
+              features={features}
+              theme="dark"
+              onStyleChange={handleStyleChange}
+              onDimensionsChange={handleDimensionsChange}
+              onResolutionChange={handleResolutionChange}
+              onAspectRatioChange={handleAspectRatioChange}
+              onModelChange={setSelectedModel}
+              onSamplerChange={setSelectedSampler}
+              onStepsChange={setSteps}
+              onSeedChange={setSeed}
+              onNegativePromptChange={setNegativePrompt}
+              onGuidanceScaleChange={setGuidanceScale}
+              onToggleFeature={(feature, enabled) => {
+                setFeatures((prev) => ({
+                  ...prev,
+                  [feature]: enabled,
+                }));
+              }}
+            />
+          </section>
+        )}
+
+        {/* Payment Plans Section */}
         {activeFeature === "text-to-image" && showPaymentPlans && (
           <section>
             <PaymentPlans
@@ -2207,9 +2191,17 @@ className={selectedFeatures.includes(feature)
             </div>
           </div>
         </div>
-   </div>
+      </div>
     </DialogContent>
   </Dialog>
-</div>)
-}} // Add this closing bracket to fix error
-  
+</div>
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+);
+};
+
+export default Home;
