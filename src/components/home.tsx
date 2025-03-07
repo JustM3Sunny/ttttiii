@@ -17,736 +17,771 @@ import ErrorBoundary from "./ErrorBoundary";
 
 // Lazy load components that aren't needed immediately
 const AIStylePresets = lazy(
-  () => import("./TextToImageGenerator/AIStylePresets"),
+() => import("./TextToImageGenerator/AIStylePresets"),
 );
 const AdvancedImageFilters = lazy(
-  () => import("./TextToImageGenerator/AdvancedImageFilters"),
+() => import("./TextToImageGenerator/AdvancedImageFilters"),
 );
 const ThreeDModelViewer = lazy(
-  () => import("./TextToImageGenerator/3DModelViewer"),
+() => import("./TextToImageGenerator/3DModelViewer"),
 );
 const AdvancedDrawingTools = lazy(
-  () => import("./TextToImageGenerator/AdvancedDrawingTools"),
+() => import("./TextToImageGenerator/AdvancedDrawingTools"),
 );
 
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+Dialog,
+DialogContent,
+DialogHeader,
+DialogTitle,
+DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  enhancePromptWithGemini,
-  analyzeImageWithGemini,
-  generatePromptFromDrawing,
+enhancePromptWithGemini,
+analyzeImageWithGemini,
+generatePromptFromDrawing,
 } from "@/lib/gemini";
 
 interface GeneratedImage {
-  id: string;
-  imageUrl: string;
-  prompt: string;
-  style: string;
-  dimensions: string;
-  createdAt: string;
-  model?: string;
-  negativePrompt?: string;
-  seed?: string;
-  guidanceScale?: number;
-  steps?: number;
+id: string;
+imageUrl: string;
+prompt: string;
+style: string;
+dimensions: string;
+createdAt: string;
+model?: string;
+negativePrompt?: string;
+seed?: string;
+guidanceScale?: number;
+steps?: number;
 }
 
 const Home = () => {
-  const [prompt, setPrompt] = useState("");
-  const [selectedStyle, setSelectedStyle] = useState("realistic");
-  const [dimensions, setDimensions] = useState({ width: 512, height: 512 });
-  const [resolution, setResolution] = useState(75);
-  const [aspectRatio, setAspectRatio] = useState("1:1");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState("");
-  const [imageHistory, setImageHistory] = useState<GeneratedImage[]>([]);
-  const [selectedModel, setSelectedModel] = useState("stable-diffusion-xl");
-  const [selectedSampler, setSelectedSampler] = useState("euler-a");
-  const [steps, setSteps] = useState(30);
-  const [seed, setSeed] = useState("");
-  const [negativePrompt, setNegativePrompt] = useState("");
-  const [guidanceScale, setGuidanceScale] = useState(7.5);
+const [prompt, setPrompt] = useState("");
+const [selectedStyle, setSelectedStyle] = useState("realistic");
+const [dimensions, setDimensions] = useState({ width: 512, height: 512 });
+const [resolution, setResolution] = useState(75);
+const [aspectRatio, setAspectRatio] = useState("1:1");
+const [isGenerating, setIsGenerating] = useState(false);
+const [generatedImage, setGeneratedImage] = useState("");
+const [imageHistory, setImageHistory] = useState<GeneratedImage[]>([]);
+const [selectedModel, setSelectedModel] = useState("stable-diffusion-xl");
+const [selectedSampler, setSelectedSampler] = useState("euler-a");
+const [steps, setSteps] = useState(30);
+const [seed, setSeed] = useState("");
+const [negativePrompt, setNegativePrompt] = useState("");
+const [guidanceScale, setGuidanceScale] = useState(7.5);
 
-  // Save user preferences to local storage
-  useEffect(() => {
-    // Load saved preferences from localStorage if they exist
-    const savedPrompt = localStorage.getItem("lastPrompt");
-    const savedStyle = localStorage.getItem("selectedStyle");
-    const savedHistory = localStorage.getItem("imageHistory");
+// Save user preferences to local storage
+useEffect(() => {
+// Load saved preferences from localStorage if they exist
+const savedPrompt = localStorage.getItem("lastPrompt");
+const savedStyle = localStorage.getItem("selectedStyle");
+const savedHistory = localStorage.getItem("imageHistory");
 
-    if (savedPrompt) setPrompt(savedPrompt);
-    if (savedStyle) setSelectedStyle(savedStyle);
-    if (savedHistory) {
-      try {
-        setImageHistory(JSON.parse(savedHistory));
-      } catch (e) {
-        console.error("Error parsing saved history:", e);
-      }
-    }
-  }, []);
+if (savedPrompt) setPrompt(savedPrompt);
+if (savedStyle) setSelectedStyle(savedStyle);
+if (savedHistory) {
+  try {
+    setImageHistory(JSON.parse(savedHistory));
+  } catch (e) {
+    console.error("Error parsing saved history:", e);
+  }
+}
 
-  // Save preferences when they change
-  useEffect(() => {
-    try {
-      if (prompt) localStorage.setItem("lastPrompt", prompt);
-      if (selectedStyle) localStorage.setItem("selectedStyle", selectedStyle);
-      if (imageHistory.length > 0) {
-        // Only store the 5 most recent images to avoid quota issues
-        localStorage.setItem(
-          "imageHistory",
-          JSON.stringify(imageHistory.slice(0, 5)),
-        );
-      }
-    } catch (error) {
-      console.error("Error saving to localStorage:", error);
-      // If we hit quota limits, clear history and try again with just the latest image
-      if (error.name === "QuotaExceededError") {
-        try {
-          localStorage.removeItem("imageHistory");
-          if (imageHistory.length > 0) {
-            localStorage.setItem(
-              "imageHistory",
-              JSON.stringify([imageHistory[0]]),
-            );
-          }
-        } catch (e) {
-          console.error("Failed to recover from storage quota error:", e);
-        }
-      }
-    }
-  }, [prompt, selectedStyle, imageHistory]);
 
-  const [currentTheme, setCurrentTheme] = useState<string>("dark");
-  const [showHelpDialog, setShowHelpDialog] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [showProfileDialog, setShowProfileDialog] = useState(false);
-  const [showChatbot, setShowChatbot] = useState(false);
-  const [chatPosition, setChatPosition] = useState({
-    right: "20px",
-    bottom: "20px",
-  });
-  const [showHistorySidebar, setShowHistorySidebar] = useState(false);
-  const [credits, setCredits] = useState(30);
-  const [showPaymentPlans, setShowPaymentPlans] = useState(false);
-  const [recentPrompts, setRecentPrompts] = useState<string[]>([]);
-  const [previousVersions, setPreviousVersions] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
-  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
-  const [showDrawingTab, setShowDrawingTab] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [features, setFeatures] = useState({
-    enhanceDetails: false,
-    hdrEffect: false,
-    removeBackground: false,
-    upscale: false,
-    faceCorrection: false,
-  });
-  // Track redo stack separately
-  const [redoStack, setRedoStack] = useState<string[]>([]);
-  const [variants, setVariants] = useState<string[]>([]);
+}, []);
 
-  // Advanced image generation function with Gemini integration
-  const handleGenerateImage = async () => {
-    if (!prompt.trim()) return;
+// Save preferences when they change
+useEffect(() => {
+try {
+if (prompt) localStorage.setItem("lastPrompt", prompt);
+if (selectedStyle) localStorage.setItem("selectedStyle", selectedStyle);
+if (imageHistory.length > 0) {
+// Only store the 5 most recent images to avoid quota issues
+localStorage.setItem(
+"imageHistory",
+JSON.stringify(imageHistory.slice(0, 5)),
+);
+}
+} catch (error) {
+console.error("Error saving to localStorage:", error);
+// If we hit quota limits, clear history and try again with just the latest image
+if (error.name === "QuotaExceededError") {
+try {
+localStorage.removeItem("imageHistory");
+if (imageHistory.length > 0) {
+localStorage.setItem(
+"imageHistory",
+JSON.stringify([imageHistory[0]]),
+);
+}
+} catch (e) {
+console.error("Failed to recover from storage quota error:", e);
+}
+}
+}
+}, [prompt, selectedStyle, imageHistory]);
 
-    // Save current image to previous versions if there is one
-    if (generatedImage) {
-      setPreviousVersions((prev) => [generatedImage, ...prev]);
-    }
+const [currentTheme, setCurrentTheme] = useState<string>("dark");
+const [showHelpDialog, setShowHelpDialog] = useState(false);
+const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+const [showProfileDialog, setShowProfileDialog] = useState(false);
+const [showChatbot, setShowChatbot] = useState(false);
+const [chatPosition, setChatPosition] = useState({
+right: "20px",
+bottom: "20px",
+});
+const [showHistorySidebar, setShowHistorySidebar] = useState(false);
+const [credits, setCredits] = useState(30);
+const [showPaymentPlans, setShowPaymentPlans] = useState(false);
+const [recentPrompts, setRecentPrompts] = useState<string[]>([]);
+const [previousVersions, setPreviousVersions] = useState<string[]>([]);
+const [historyIndex, setHistoryIndex] = useState(-1);
+const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
+const [showDrawingTab, setShowDrawingTab] = useState(false);
+const canvasRef = useRef<HTMLCanvasElement>(null);
+const [features, setFeatures] = useState({
+enhanceDetails: false,
+hdrEffect: false,
+removeBackground: false,
+upscale: false,
+faceCorrection: false,
+});
+// Track redo stack separately
+const [redoStack, setRedoStack] = useState<string[]>([]);
+const [variants, setVariants] = useState<string[]>([]);
 
-    // Clear previous image and set loading state
-    setGeneratedImage("");
-    setImageLoaded(false);
-    setIsGenerating(true);
+// Advanced image generation function with Gemini integration
+const handleGenerateImage = async () => {
+if (!prompt.trim()) return;
 
-    // Add a full-screen overlay during image generation
-    const overlay = document.createElement("div");
-    overlay.id = "generation-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.8)";
-    overlay.style.zIndex = "9998";
-    overlay.style.display = "flex";
-    overlay.style.justifyContent = "center";
-    overlay.style.alignItems = "center";
-    overlay.style.flexDirection = "column";
+// Save current image to previous versions if there is one
+if (generatedImage) {
+  setPreviousVersions((prev) => [generatedImage, ...prev]);
+}
 
-    const spinner = document.createElement("div");
-    spinner.className =
-      "animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500";
+// Clear previous image and set loading state
+setGeneratedImage("");
+setImageLoaded(false);
+setIsGenerating(true);
 
-    const text = document.createElement("p");
-    text.textContent = "Generating your image...";
-    text.style.color = "white";
-    text.style.marginTop = "20px";
-    text.style.fontSize = "18px";
+// Add a full-screen overlay during image generation
+const overlay = document.createElement("div");
+overlay.id = "generation-overlay";
+overlay.style.position = "fixed";
+overlay.style.top = "0";
+overlay.style.left = "0";
+overlay.style.width = "100%";
+overlay.style.height = "100%";
+overlay.style.backgroundColor = "rgba(0,0,0,0.8)";
+overlay.style.zIndex = "9998";
+overlay.style.display = "flex";
+overlay.style.justifyContent = "center";
+overlay.style.alignItems = "center";
+overlay.style.flexDirection = "column";
 
-    overlay.appendChild(spinner);
-    overlay.appendChild(text);
-    document.body.appendChild(overlay);
+const spinner = document.createElement("div");
+spinner.className =
+  "animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500";
 
-    try {
-      // Apply features to the prompt
-      let enhancedPrompt = prompt;
+const text = document.createElement("p");
+text.textContent = "Generating your image...";
+text.style.color = "white";
+text.style.marginTop = "20px";
+text.style.fontSize = "18px";
 
-      // Add feature-specific enhancements
-      if (features.enhanceDetails) {
-        enhancedPrompt +=
-          ", highly detailed, intricate details, sharp focus, hyperrealism, 8k resolution, perfect composition";
-      }
+overlay.appendChild(spinner);
+overlay.appendChild(text);
+document.body.appendChild(overlay);
 
-      if (features.hdrEffect) {
-        enhancedPrompt += ", HDR, dramatic lighting, high dynamic range";
-      }
+try {
+  // Apply features to the prompt
+  let enhancedPrompt = prompt;
 
-      if (features.faceCorrection) {
-        enhancedPrompt +=
-          ", perfect face, detailed facial features, realistic skin texture";
-      }
+  // Add feature-specific enhancements
+  if (features.enhanceDetails) {
+    enhancedPrompt += ", highly detailed, intricate details, sharp focus";
+  }
 
-      // Add style-specific enhancements
-      if (selectedStyle) {
-        enhancedPrompt += `, ${selectedStyle} style`;
-      }
+  if (features.hdrEffect) {
+    enhancedPrompt += ", HDR, dramatic lighting, high dynamic range";
+  }
 
-      // Add negative prompt if provided
-      let fullPrompt = enhancedPrompt;
-      if (negativePrompt) {
-        fullPrompt += ` || negative prompt: ${negativePrompt}`;
-      }
+  if (features.faceCorrection) {
+    enhancedPrompt +=
+      ", perfect face, detailed facial features, realistic skin texture";
+  }
 
-      // Add tuning text for better results
-      const tuningText =
-        ", ultra high resolution, 10K, professional lighting, cinematic, masterpiece, unparalleled detail";
-      fullPrompt += tuningText;
+  // Add style-specific enhancements
+  if (selectedStyle) {
+    enhancedPrompt += `, ${selectedStyle} style`;
+  }
 
-      // Generate image URL based on dimensions and seed
-      // Use extended height to avoid watermark, will crop later
-      const extendedHeight = dimensions.height * 1.2; // 20% taller to hide watermark
-      // Always generate HD 2K images regardless of user settings
-      let imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=2k`; // Always use 2K quality
+  // Add negative prompt if provided
+  let fullPrompt = enhancedPrompt;
+  if (negativePrompt) {
+    fullPrompt += ` || negative prompt: ${negativePrompt}`;
+  }
 
-      // Add seed if provided
-      if (seed) {
-        imageUrl += `&seed=${seed}`;
-      }
+  // Add tuning text for better results
+  const tuningText =
+    ", ultra high resolution, 4K, professional lighting, cinematic";
+  fullPrompt += tuningText;
 
-      // Add guidance scale if different from default
-      if (guidanceScale !== 7.5) {
-        imageUrl += `&cfg_scale=${guidanceScale}`;
-      }
+  // Generate image URL based on dimensions and seed
+  // Use extended height to avoid watermark, will crop later
+  const extendedHeight = dimensions.height * 1.2; // 20% taller to hide watermark
+  // Always generate HD 2K images regardless of user settings
+  let imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=2k`; // Always use 2K quality
 
-      // Add steps if different from default
-      if (steps !== 30) {
-        imageUrl += `&steps=${steps}`;
-      }
+  // Add seed if provided
+  if (seed) {
+    imageUrl += `&seed=${seed}`;
+  }
 
-      // Add sampler if provided
-      if (selectedSampler) {
-        imageUrl += `&sampler=${selectedSampler}`;
-      }
+  // Add guidance scale if different from default
+  if (guidanceScale !== 7.5) {
+    imageUrl += `&cfg_scale=${guidanceScale}`;
+  }
 
-      console.log("Generating image with URL:", imageUrl);
+  // Add steps if different from default
+  if (steps !== 30) {
+    imageUrl += `&steps=${steps}`;
+  }
 
-      // Create a new image to load it
-      const img = new Image();
-      img.crossOrigin = "anonymous"; // To avoid CORS issues
-      img.src = imageUrl;
+  // Add sampler if provided
+  if (selectedSampler) {
+    imageUrl += `&sampler=${selectedSampler}`;
+  }
 
-      // Set a timeout to handle cases where the image might take too long to load
-      const timeoutId = setTimeout(() => {
-        if (isGenerating) {
-          console.log("Image generation timeout, using fallback");
-          // Use a fallback image if the generation is taking too long
-          const fallbackImages = [
-            "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
-            "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
-            "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
-            "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
-            "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
-            "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
-          ];
+  console.log("Generating image with URL:", imageUrl);
 
-          // Deterministically select an image based on the prompt to simulate consistent generation
-          const promptHash = prompt
-            .split("")
-            .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const imageIndex = promptHash % fallbackImages.length;
-          const selectedImage = fallbackImages[imageIndex];
+  // Create a new image to load it
+  const img = new Image();
+  img.crossOrigin = "anonymous"; // To avoid CORS issues
+  img.src = imageUrl;
 
-          const fallbackImg = new Image();
-          fallbackImg.crossOrigin = "anonymous";
-          fallbackImg.src = selectedImage;
+  // Set a timeout to handle cases where the image might take too long to load
+  const timeoutId = setTimeout(() => {
+    if (isGenerating) {
+      console.log("Image generation timeout, using fallback");
+      // Use a fallback image if the generation is taking too long
+      const fallbackImages = [
+        "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
+        "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
+        "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
+        "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
+        "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
+        "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
+      ];
 
-          fallbackImg.onload = function () {
-            handleImageLoaded(fallbackImg);
+      // Deterministically select an image based on the prompt to simulate consistent generation
+      const promptHash = prompt
+        .split("")
+        .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const imageIndex = promptHash % fallbackImages.length;
+      const selectedImage = fallbackImages[imageIndex];
 
-            // Remove the overlay
-            const overlay = document.getElementById("generation-overlay");
-            if (overlay) {
-              document.body.removeChild(overlay);
-            }
-          };
-        }
-      }, 8000); // 8 second timeout
+      const fallbackImg = new Image();
+      fallbackImg.crossOrigin = "anonymous";
+      fallbackImg.src = selectedImage;
 
-      const handleImageLoaded = (loadedImg) => {
-        clearTimeout(timeoutId);
-
-        // Create a canvas to process the image (crop watermark if needed)
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-
-        // Set canvas size (crop height to remove watermark)
-        const cropHeight = Math.min(
-          loadedImg.height,
-          loadedImg.height * 0.83,
-        ); // Crop 17% from bottom to remove watermark
-        canvas.width = loadedImg.width;
-        canvas.height = cropHeight;
-
-        // Draw the image with cropping
-        ctx.drawImage(
-          loadedImg,
-          0,
-          0,
-          loadedImg.width,
-          cropHeight,
-          0,
-          0,
-          loadedImg.width,
-          cropHeight,
-        );
-
-        // Apply additional processing for features
-        if (features.removeBackground) {
-          // Simulate background removal with a white background
-          // In a real implementation, you would use a proper background removal algorithm
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          // This is just a placeholder - real background removal would be more complex
-          ctx.fillStyle = "white";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.putImageData(imageData, 0, 0);
-        }
-
-        if (features.upscale && dimensions.width < 1024) {
-          // Simulate upscaling by creating a larger canvas
-          const upscaledCanvas = document.createElement("canvas");
-          upscaledCanvas.width = canvas.width * 4;  // Increased upscale factor
-          upscaledCanvas.height = canvas.height * 4; // Increased upscale factor
-          const upscaledCtx = upscaledCanvas.getContext("2d");
-
-          // Draw the original image onto the larger canvas
-          upscaledCtx.drawImage(
-            canvas,
-            0,
-            0,
-            upscaledCanvas.width,
-            upscaledCanvas.height,
-          );
-          canvas.width = upscaledCanvas.width;
-          canvas.height = upscaledCanvas.height;
-          ctx.drawImage(upscaledCanvas, 0, 0);
-        }
-
-        // Get the processed image as data URL
-        const processedImageUrl = canvas.toDataURL("image/png");
-
-        // Update the generated image
-        setGeneratedImage(processedImageUrl);
-        setImageLoaded(true);
-        setIsGenerating(false);
+      fallbackImg.onload = function () {
+        handleImageLoaded(fallbackImg);
 
         // Remove the overlay
         const overlay = document.getElementById("generation-overlay");
         if (overlay) {
           document.body.removeChild(overlay);
         }
-
-        // Add to recent prompts if not already there
-        if (!recentPrompts.includes(prompt)) {
-          setRecentPrompts((prev) => [prompt, ...prev.slice(0, 4)]);
-        }
-
-        console.log("Generated new image with prompt:", prompt);
-
-        // Generate variants
-        generateVariants();
       };
+    }
+  }, 8000); // 8 second timeout
 
-      img.onload = function () {
-        handleImageLoaded(img);
-      };
+  const handleImageLoaded = (loadedImg) => {
+    clearTimeout(timeoutId);
 
-      img.onerror = function () {
-        console.error("Error loading image, using fallback");
-        // Use a fallback image if the generation fails
-        const fallbackImages = [
-          "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
-          "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
-          "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
-          "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
-          "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
-          "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
-        ];
+    // Create a canvas to process the image (crop watermark if needed)
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
 
-        // Deterministically select an image based on the prompt
-        const promptHash = prompt
-          .split("")
-          .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const imageIndex = promptHash % fallbackImages.length;
-        const selectedImage = fallbackImages[imageIndex];
+    // Set canvas size (crop height to remove watermark)
+    const cropHeight = Math.min(loadedImg.height, loadedImg.height * 0.83); // Crop 17% from bottom to remove watermark
+    canvas.width = loadedImg.width;
+    canvas.height = cropHeight;
 
-        const fallbackImg = new Image();
-        fallbackImg.crossOrigin = "anonymous";
-        fallbackImg.src = selectedImage;
+    // Draw the image with cropping
+    ctx.drawImage(
+      loadedImg,
+      0,
+      0,
+      loadedImg.width,
+      cropHeight,
+      0,
+      0,
+      loadedImg.width,
+      cropHeight,
+    );
 
-        fallbackImg.onload = function () {
-          handleImageLoaded(fallbackImg);
+    // Apply additional processing for features
+    if (features.removeBackground) {
+      // Simulate background removal with a white background
+      // In a real implementation, you would use a proper background removal algorithm
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // This is just a placeholder - real background removal would be more complex
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.putImageData(imageData, 0, 0);
+    }
 
-          // Remove the overlay
-          const overlay = document.getElementById("generation-overlay");
-          if (overlay) {
-            document.body.removeChild(overlay);
-          }
-        };
-      };
-    } catch (error) {
-      console.error("Error generating image:", error);
-      setIsGenerating(false);
-      alert("Image generation failed");
+    if (features.upscale && dimensions.width < 1024) {
+      // Simulate upscaling by creating a larger canvas
+      const upscaledCanvas = document.createElement("canvas");
+      upscaledCanvas.width = canvas.width * 2;
+      upscaledCanvas.height = canvas.height * 2;
+      const upscaledCtx = upscaledCanvas.getContext("2d");
 
-      // Remove the overlay in case of error
+      // Draw the original image onto the larger canvas
+      upscaledCtx.drawImage(
+        canvas,
+        0,
+        0,
+        upscaledCanvas.width,
+        upscaledCanvas.height,
+      );
+      canvas.width = upscaledCanvas.width;
+      canvas.height = upscaledCanvas.height;
+      ctx.drawImage(upscaledCanvas, 0, 0);
+    }
+
+    // Get the processed image as data URL
+    const processedImageUrl = canvas.toDataURL("image/png");
+
+    // Update the generated image
+    setGeneratedImage(processedImageUrl);
+    setImageLoaded(true);
+    setIsGenerating(false);
+
+    // Remove the overlay
+    const overlay = document.getElementById("generation-overlay");
+    if (overlay) {
+      document.body.removeChild(overlay);
+    }
+
+    // Add to recent prompts if not already there
+    if (!recentPrompts.includes(prompt)) {
+      setRecentPrompts((prev) => [prompt, ...prev.slice(0, 4)]);
+    }
+
+    console.log("Generated new image with prompt:", prompt);
+
+    // Generate variants
+    generateVariants();
+  };
+
+  img.onload = function () {
+    handleImageLoaded(img);
+  };
+
+  img.onerror = function () {
+    console.error("Error loading image, using fallback");
+    // Use a fallback image if the generation fails
+    const fallbackImages = [
+      "https://images.unsplash.com/photo-1682687982501-1e58ab814714?w=800&q=80",
+      "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
+      "https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=800&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
+      "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?w=800&q=80",
+      "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
+    ];
+
+    // Deterministically select an image based on the prompt
+    const promptHash = prompt
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const imageIndex = promptHash % fallbackImages.length;
+    const selectedImage = fallbackImages[imageIndex];
+
+    const fallbackImg = new Image();
+    fallbackImg.crossOrigin = "anonymous";
+    fallbackImg.src = selectedImage;
+
+    fallbackImg.onload = function () {
+      handleImageLoaded(fallbackImg);
+
+      // Remove the overlay
       const overlay = document.getElementById("generation-overlay");
       if (overlay) {
         document.body.removeChild(overlay);
       }
-    }
-  };
-
-  // State for image loading
-  const [imageLoaded, setImageLoaded] = useState(false);
-
-  // Function to enhance prompt using Gemini API with fallback
-  const handleEnhancePrompt = async () => {
-    if (!prompt.trim()) return;
-
-    setIsEnhancingPrompt(true);
-
-    try {
-      // Try to use Gemini API first
-      try {
-        const enhancedPrompt = await enhancePromptWithGemini(prompt);
-        setPrompt(enhancedPrompt);
-      } catch (apiError) {
-        console.error("Gemini API error, using local enhancement:", apiError);
-        // Fallback to local enhancement if API fails
-        const enhancementPhrases = [
-          "ultra detailed",
-          "highly attractive full image",
-          "professional lighting",
-          "cinematic composition",
-          "8K resolution",
-          "photorealistic",
-          "dramatic lighting",
-          "high quality",
-          "masterpiece",
-          "intricate details",
-          "sharp focus",
-          "studio quality",
-          "perfect composition",
-          "10k resolution",
-          "unparalleled detail"
-        ];
-
-        // Add random enhancement phrases that aren't already in the prompt
-        let enhancedPrompt = prompt;
-        enhancementPhrases.forEach((phrase) => {
-          if (
-            !enhancedPrompt.toLowerCase().includes(phrase.toLowerCase()) &&
-            Math.random() > 0.3
-          ) {
-            enhancedPrompt += ", " + phrase;
-          }
-        });
-
-        setPrompt(enhancedPrompt);
-      }
-    } catch (error) {
-      console.error("Error enhancing prompt:", error);
-      alert("Failed to enhance prompt. Please try again.");
-    } finally {
-      setIsEnhancingPrompt(false);
-    }
-  };
-
-  // Function to analyze image and generate similar prompt
-  const handleAnalyzeImage = async (imageUrl: string) => {
-    setIsAnalyzingImage(true);
-
-    try {
-      // Try to use Gemini API first
-      try {
-        const generatedPrompt = await analyzeImageWithGemini(imageUrl);
-        setPrompt(generatedPrompt);
-      } catch (apiError) {
-        console.error("Gemini API error, using fallback:", apiError);
-        // Fallback to predefined prompts if API fails
-        const imagePrompts = [
-          "A stunning landscape with dramatic lighting, mountains in the background and a serene lake in the foreground. Ultra-realistic 4K resolution with cinematic feel.",
-          "A detailed portrait with perfect lighting, shallow depth of field, and professional studio quality. High-resolution with natural skin tones.",
-          "An abstract digital artwork with vibrant colors and flowing shapes. High-contrast with sharp details and modern aesthetic.",
-          "A futuristic cityscape at night with neon lights, tall skyscrapers, and flying vehicles. Cyberpunk style with dramatic lighting.",
-          "A serene nature scene with sunlight filtering through trees, creating a magical atmosphere. Photorealistic quality with perfect composition.",
-          "A breathtaking landscape in 10k resolution, showcasing unparalleled detail and vibrant colors, under dramatic lighting.",
-        ];
-
-        // Select a random prompt from the list
-        const randomPrompt =
-          imagePrompts[Math.floor(Math.random() * imagePrompts.length)];
-        setPrompt(randomPrompt);
-      }
-
-      // Auto-generate after analysis
-      handleGenerateImage();
-    } catch (error) {
-      console.error("Error analyzing image:", error);
-      alert("Failed to analyze image. Using default prompt instead.");
-    } finally {
-      setIsAnalyzingImage(false);
-    }
-  };
-
-  // Function to handle image upload
-  const handleImageUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        const imageUrl = e.target.result as string;
-        handleAnalyzeImage(imageUrl);
-      }
     };
-    reader.readAsDataURL(file);
   };
+} catch (error) {
+  console.error("Error generating image:", error);
+  setIsGenerating(false);
+  alert("Image generation failed");
 
-  // Function to handle drawing submission
-  const handleGenerateFromDrawing = async (drawingDataUrl: string) => {
-    setIsAnalyzingImage(true);
+  // Remove the overlay in case of error
+  const overlay = document.getElementById("generation-overlay");
+  if (overlay) {
+    document.body.removeChild(overlay);
+  }
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
 
-    try {
-      // Try to use Gemini API first
-      try {
-        const generatedPrompt = await generatePromptFromDrawing(drawingDataUrl);
-        setPrompt(generatedPrompt);
-      } catch (apiError) {
-        console.error("Gemini API error, using fallback:", apiError);
-        // Fallback to predefined prompts if API fails
-        const drawingPrompts = [
-          "A professional digital artwork based on a hand-drawn sketch, with detailed elements, vibrant colors, and professional composition. High-quality rendering with smooth lines and textures.",
-          "A polished illustration derived from a sketch, with enhanced details, professional coloring, and artistic style. Clean lines and perfect proportions.",
-          "A refined digital painting based on a rough sketch, with beautiful color gradients, detailed textures, and professional lighting effects.",
-          "An artistic rendering of a hand-drawn concept, transformed into a professional illustration with perfect proportions and vivid colors.",
-          "A sketch transformed into a masterful digital artwork, with enhanced details, dramatic lighting, and professional composition.",
-          "A 10k resolution digital painting based on a hand-drawn sketch, with unparalleled details, vibrant colors, and professional composition"
-        ];
+};
 
-        // Select a random prompt from the list
-        const randomPrompt =
-          drawingPrompts[Math.floor(Math.random() * drawingPrompts.length)];
-        setPrompt(randomPrompt);
-      }
+// State for image loading
+const [imageLoaded, setImageLoaded] = useState(false);
 
-      // Show success message
-      const successMessage = document.createElement("div");
-      successMessage.style.position = "fixed";
-      successMessage.style.top = "20px";
-      successMessage.style.left = "50%";
-      successMessage.style.transform = "translateX(-50%)";
-      successMessage.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
-      successMessage.style.color = "white";
-      successMessage.style.padding = "10px 20px";
-      successMessage.style.borderRadius = "5px";
-      successMessage.style.zIndex = "9999";
-      successMessage.textContent = "Drawing processed successfully!";
-      document.body.appendChild(successMessage);
-      setTimeout(() => document.body.removeChild(successMessage), 3000);
+// Function to enhance prompt using Gemini API with fallback
+const handleEnhancePrompt = async () => {
+if (!prompt.trim()) return;
 
-      setActiveFeature("text-to-image"); // Switch back to main tab
-      handleGenerateImage();
-    } catch (error) {
-      console.error("Error generating from drawing:", error);
-      alert("Failed to process drawing. Using default prompt instead.");
-    } finally {
-      setIsAnalyzingImage(false);
-    }
-  };
+setIsEnhancingPrompt(true);
 
-  const handleStyleChange = (style: string) => {
-    setSelectedStyle(style);
-  };
-
-  const handleDimensionsChange = (width: number, height: number) => {
-    setDimensions({ width, height });
-  };
-
-  const handleResolutionChange = (value: number) => {
-    setResolution(value);
-  };
-
-  const handleAspectRatioChange = (ratio: string) => {
-    setAspectRatio(ratio);
-  };
-
-  const handleDownload = () => {
-    if (!generatedImage) return;
-
-    // Create a temporary link element
-    const link = document.createElement("a");
-    link.href = generatedImage;
-    link.download = `generated-image-${Date.now()}.png`;
-
-    // Append to body, click and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleShare = async () => {
-    if (!generatedImage) return;
-
-    try {
-      // Check if Web Share API is available
-      if (navigator.share) {
-        // Convert data URL to blob for sharing
-        const response = await fetch(generatedImage);
-        const blob = await response.blob();
-        const file = new File([blob], "generated-image.png", {
-          type: "image/png",
-        });
-
-        await navigator.share({
-          title: "AI Generated Image",
-          text: prompt,
-          files: [file],
-        });
-      } else {
-        // Fallback for browsers that don't support Web Share API
-        alert(
-          "Sharing is not available in your browser. Please download the image and share it manually.",
-        );
-      }
-    } catch (error) {
-      console.error("Error sharing image:", error);
-      alert("Error sharing image");
-    }
-  };
-
-  const handleModify = () => {
-    // Implement modify functionality to edit the current image
-    if (!generatedImage) return;
-
-    // Save current image to history before modifying
-    if (generatedImage) {
-      setPreviousVersions((prev) => [generatedImage, ...prev]);
-    }
-
-    // Set loading state
-    setIsGenerating(true);
-
-    // Apply modifications based on current settings
-    setTimeout(() => {
-      handleGenerateImage();
-    }, 500);
-  };
-
-  // Function to create variations of the current image
-  const handleCreateVariation = () => {
-    if (!generatedImage || !prompt) return;
-
-    // Save current image to history
-    setPreviousVersions((prev) => [generatedImage, ...prev]);
-
-    // Show loading overlay for variations
-    const overlay = document.createElement("div");
-    overlay.id = "variations-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.8)";
-    overlay.style.zIndex = "9998";
-    overlay.style.display = "flex";
-    overlay.style.justifyContent = "center";
-    overlay.style.alignItems = "center";
-    overlay.style.flexDirection = "column";
-
-    const spinner = document.createElement("div");
-    spinner.className =
-      "animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500";
-
-    const text = document.createElement("p");
-    text.textContent = "Creating variations...";
-    text.style.color = "white";
-    text.style.marginTop = "20px";
-    text.style.fontSize = "18px";
-
-    overlay.appendChild(spinner);
-    overlay.appendChild(text);
-    document.body.appendChild(overlay);
-
-    // Generate 3-4 variations with different seeds and slight prompt modifications
-    const variations = [];
-    const variationCount = 4; // Generate 4 variations
-    let completedVariations = 0;
-
-    // Create slight variations of the prompt
-    const promptVariations = [
-      prompt + ", slightly different lighting",
-      prompt + ", alternative perspective",
-      prompt + ", different composition",
-      prompt + ", subtle color shift",
+try {
+  // Try to use Gemini API first
+  try {
+    const enhancedPrompt = await enhancePromptWithGemini(prompt);
+    setPrompt(enhancedPrompt);
+  } catch (apiError) {
+    console.error("Gemini API error, using local enhancement:", apiError);
+    // Fallback to local enhancement if API fails
+    const enhancementPhrases = [
+      "ultra detailed",
+      "highly attracttive full image",
+      "professional lighting",
+      "cinematic composition",
+      "8K resolution",
+      "photorealistic",
+      "dramatic lighting",
+      "high quality",
+      "masterpiece",
+      "intricate details",
+      "sharp focus",
+      "studio quality",
+      "perfect composition",
     ];
 
-    // Generate each variation
-    for (let i = 0; i < variationCount; i++) {
-      // Use a different seed for each variation
-      const randomSeed = Math.floor(Math.random() * 1000000).toString();
+    // Add random enhancement phrases that aren't already in the prompt
+    let enhancedPrompt = prompt;
+    enhancementPhrases.forEach((phrase) => {
+      if (
+        !enhancedPrompt.toLowerCase().includes(phrase.toLowerCase()) &&
+        Math.random() > 0.3
+      ) {
+        enhancedPrompt += ", " + phrase;
+      }
+    });
 
-      // Create the variation URL with the modified prompt and random seed
-      const variationPrompt = promptVariations[i];
-      const extendedHeight = dimensions.height * 1.2;
-      let variationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(variationPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=2k&seed=${randomSeed}`;
+    setPrompt(enhancedPrompt);
+  }
+} catch (error) {
+  console.error("Error enhancing prompt:", error);
+  alert("Failed to enhance prompt. Please try again.");
+} finally {
+  setIsEnhancingPrompt(false);
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
 
-      // Load the variation image
-      const variationImg = new Image();
-      variationImg.crossOrigin = "anonymous";
-      variationImg.src = variationUrl;
+};
 
-      variationImg.onload = () => {
-        // Create a canvas to process the image (crop watermark if needed)
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+// Function to analyze image and generate similar prompt
+const handleAnalyzeImage = async (imageUrl: string) => {
+setIsAnalyzingImage(true);
 
-        // Set canvas size (crop height to remove watermark)
-        const cropHeight = Math.min(
-          variationImg.height,
-          variationImg.height * 0.83,
-        );
-        canvas.width = variationImg.width;
-        canvas.height = cropHeight;
+try {
+  // Try to use Gemini API first
+  try {
+    const generatedPrompt = await analyzeImageWithGemini(imageUrl);
+    setPrompt(generatedPrompt);
+  } catch (apiError) {
+    console.error("Gemini API error, using fallback:", apiError);
+    // Fallback to predefined prompts if API fails
+    const imagePrompts = [
+      "A stunning landscape with dramatic lighting, mountains in the background and a serene lake in the foreground. Ultra-realistic 4K resolution with cinematic feel.",
+      "A detailed portrait with perfect lighting, shallow depth of field, and professional studio quality. High-resolution with natural skin tones.",
+      "An abstract digital artwork with vibrant colors and flowing shapes. High-contrast with sharp details and modern aesthetic.",
+      "A futuristic cityscape at night with neon lights, tall skyscrapers, and flying vehicles. Cyberpunk style with dramatic lighting.",
+      "A serene nature scene with sunlight filtering through trees, creating a magical atmosphere. Photorealistic quality with perfect composition.",
+    ];
 
+    // Select a random prompt from the list
+    const randomPrompt =
+      imagePrompts[Math.floor(Math.random() * imagePrompts.length)];
+    setPrompt(randomPrompt);
+  }
+
+  // Auto-generate after analysis
+  handleGenerateImage();
+} catch (error) {
+  console.error("Error analyzing image:", error);
+  alert("Failed to analyze image. Using default prompt instead.");
+} finally {
+  setIsAnalyzingImage(false);
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+// Function to handle image upload
+const handleImageUpload = (file: File) => {
+const reader = new FileReader();
+reader.onload = (e) => {
+if (e.target?.result) {
+const imageUrl = e.target.result as string;
+handleAnalyzeImage(imageUrl);
+}
+};
+reader.readAsDataURL(file);
+};
+
+// Function to handle drawing submission
+const handleGenerateFromDrawing = async (drawingDataUrl: string) => {
+setIsAnalyzingImage(true);
+
+try {
+  // Try to use Gemini API first
+  try {
+    const generatedPrompt = await generatePromptFromDrawing(drawingDataUrl);
+    setPrompt(generatedPrompt);
+  } catch (apiError) {
+    console.error("Gemini API error, using fallback:", apiError);
+    // Fallback to predefined prompts if API fails
+    const drawingPrompts = [
+      "A professional digital artwork based on a hand-drawn sketch, with detailed elements, vibrant colors, and professional composition. High-quality rendering with smooth lines and textures.",
+      "A polished illustration derived from a sketch, with enhanced details, professional coloring, and artistic style. Clean lines and perfect proportions.",
+      "A refined digital painting based on a rough sketch, with beautiful color gradients, detailed textures, and professional lighting effects.",
+      "An artistic rendering of a hand-drawn concept, transformed into a professional illustration with perfect proportions and vivid colors.",
+      "A sketch transformed into a masterful digital artwork, with enhanced details, dramatic lighting, and professional composition.",
+    ];
+
+    // Select a random prompt from the list
+    const randomPrompt =
+      drawingPrompts[Math.floor(Math.random() * drawingPrompts.length)];
+    setPrompt(randomPrompt);
+  }
+
+  // Show success message
+  const successMessage = document.createElement("div");
+  successMessage.style.position = "fixed";
+  successMessage.style.top = "20px";
+  successMessage.style.left = "50%";
+  successMessage.style.transform = "translateX(-50%)";
+  successMessage.style.backgroundColor = "rgba(0, 128, 0, 0.8)";
+  successMessage.style.color = "white";
+  successMessage.style.padding = "10px 20px";
+  successMessage.style.borderRadius = "5px";
+  successMessage.style.zIndex = "9999";
+  successMessage.textContent = "Drawing processed successfully!";
+  document.body.appendChild(successMessage);
+  setTimeout(() => document.body.removeChild(successMessage), 3000);
+
+  setActiveFeature("text-to-image"); // Switch back to main tab
+  handleGenerateImage();
+} catch (error) {
+  console.error("Error generating from drawing:", error);
+  alert("Failed to process drawing. Using default prompt instead.");
+} finally {
+  setIsAnalyzingImage(false);
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+const handleStyleChange = (style: string) => {
+setSelectedStyle(style);
+};
+
+const handleDimensionsChange = (width: number, height: number) => {
+setDimensions({ width, height });
+};
+
+const handleResolutionChange = (value: number) => {
+setResolution(value);
+};
+
+const handleAspectRatioChange = (ratio: string) => {
+setAspectRatio(ratio);
+};
+
+const handleDownload = () => {
+if (!generatedImage) return;
+
+// Create a temporary link element
+const link = document.createElement("a");
+link.href = generatedImage;
+link.download = `generated-image-${Date.now()}.png`;
+
+// Append to body, click and remove
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+const handleShare = async () => {
+if (!generatedImage) return;
+
+try {
+  // Check if Web Share API is available
+  if (navigator.share) {
+    // Convert data URL to blob for sharing
+    const response = await fetch(generatedImage);
+    const blob = await response.blob();
+    const file = new File([blob], "generated-image.png", {
+      type: "image/png",
+    });
+
+    await navigator.share({
+      title: "AI Generated Image",
+      text: prompt,
+      files: [file],
+    });
+  } else {
+    // Fallback for browsers that don't support Web Share API
+    alert(
+      "Sharing is not available in your browser. Please download the image and share it manually.",
+    );
+  }
+} catch (error) {
+  console.error("Error sharing image:", error);
+  alert("Error sharing image");
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+const handleModify = () => {
+// Implement modify functionality to edit the current image
+if (!generatedImage) return;
+
+// Save current image to history before modifying
+if (generatedImage) {
+  setPreviousVersions((prev) => [generatedImage, ...prev]);
+}
+
+// Set loading state
+setIsGenerating(true);
+
+// Apply modifications based on current settings
+setTimeout(() => {
+  handleGenerateImage();
+}, 500);
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+IGNORE_WHEN_COPYING_END
+
+};
+
+// Function to create variations of the current image
+const handleCreateVariation = () => {
+if (!generatedImage || !prompt) return;
+
+// Save current image to history
+setPreviousVersions((prev) => [generatedImage, ...prev]);
+
+// Show loading overlay for variations
+const overlay = document.createElement("div");
+overlay.id = "variations-overlay";
+overlay.style.position = "fixed";
+overlay.style.top = "0";
+overlay.style.left = "0";
+overlay.style.width = "100%";
+overlay.style.height = "100%";
+overlay.style.backgroundColor = "rgba(0,0,0,0.8)";
+overlay.style.zIndex = "9998";
+overlay.style.display = "flex";
+overlay.style.justifyContent = "center";
+overlay.style.alignItems = "center";
+overlay.style.flexDirection = "column";
+
+const spinner = document.createElement("div");
+spinner.className =
+  "animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500";
+
+const text = document.createElement("p");
+text.textContent = "Creating variations...";
+text.style.color = "white";
+text.style.marginTop = "20px";
+text.style.fontSize = "18px";
+
+overlay.appendChild(spinner);
+overlay.appendChild(text);
+document.body.appendChild(overlay);
+
+// Generate 3-4 variations with different seeds and slight prompt modifications
+const variations = [];
+const variationCount = 4; // Generate 4 variations
+let completedVariations = 0;
+
+// Create slight variations of the prompt
+const promptVariations = [
+  prompt + ", slightly different lighting",
+  prompt + ", alternative perspective",
+  prompt + ", different composition",
+  prompt + ", subtle color shift",
+];
+
+// Generate each variation
+for (let i = 0; i < variationCount; i++) {
+  // Use a different seed for each variation
+  const randomSeed = Math.floor(Math.random() * 1000000).toString();
+
+  // Create the variation URL with the modified prompt and random seed
+  const variationPrompt = promptVariations[i];
+  const extendedHeight = dimensions.height * 1.2;
+  let variationUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(variationPrompt)}?width=${dimensions.width}&height=${extendedHeight}&hd=1&quality=2k&seed=${randomSeed}`;
+
+  // Load the variation image
+  const variationImg = new Image();
+  variationImg.crossOrigin = "anonymous";
+  variationImg.src = variationUrl;
+
+  variationImg.onload = () => {
+    // Create a canvas to process the image (crop watermark if needed)
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // Set canvas size (crop height to remove watermark)
+    const cropHeight = Math.min(
+      variationImg.height,
+      variationImg.height * 0.83,
+    );
+    canvas.width = variationImg.width;
+    canvas.height = cropHeight;
 
     // Draw the image with cropping
     ctx.drawImage(
@@ -2197,5 +2232,4 @@ className={px-3 py-2 rounded-md text-sm whitespace-nowrap ${activeFeature === it
 </div>
 );
 };
-
 export default Home;
