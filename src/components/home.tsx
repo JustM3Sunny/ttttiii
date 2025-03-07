@@ -872,7 +872,7 @@ const Home = () => {
               brightness: 100,
               contrast: 130,
               saturation: 110,
-              hue: 0,,
+              hue: 0,
               sepia: 30,
             },
             { brightness: 105, contrast: 95, saturation: 120, hue: 30 },
