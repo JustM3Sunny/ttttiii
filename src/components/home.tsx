@@ -431,12 +431,6 @@ try {
     document.body.removeChild(overlay);
   }
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
-
 };
 
 // State for image loading
@@ -491,12 +485,6 @@ try {
 } finally {
   setIsEnhancingPrompt(false);
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
-
 };
 
 // Function to analyze image and generate similar prompt
@@ -533,11 +521,6 @@ try {
 } finally {
   setIsAnalyzingImage(false);
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
 
 };
 
@@ -602,11 +585,6 @@ try {
 } finally {
   setIsAnalyzingImage(false);
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
 
 };
 
@@ -638,11 +616,6 @@ link.download = `generated-image-${Date.now()}.png`;
 document.body.appendChild(link);
 link.click();
 document.body.removeChild(link);
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
 
 };
 
@@ -674,11 +647,6 @@ try {
   console.error("Error sharing image:", error);
   alert("Error sharing image");
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
 
 };
 
@@ -698,11 +666,7 @@ setIsGenerating(true);
 setTimeout(() => {
   handleGenerateImage();
 }, 500);
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
+
 
 };
 
@@ -1024,11 +988,6 @@ setTimeout(() => {
     };
   }
 }, 15000); // 15 second timeout for all variations to load
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
 
 };
 
@@ -1062,11 +1021,6 @@ setTimeout(() => {
     upscale: false,
   }));
 }, 1000);
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
 
 };
 
@@ -1085,11 +1039,6 @@ link.download = history-image-${image.id}.png;
 document.body.appendChild(link);
 link.click();
 document.body.removeChild(link);
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
 
 };
 
@@ -1119,11 +1068,7 @@ await navigator.share({
   console.error("Error sharing image:", error);
   alert("Error sharing image");
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
+
 
 };
 
@@ -1170,11 +1115,6 @@ steps: steps,
 
 setImageHistory((prev) => [newImage, ...prev]);
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
 
 }, [generatedImage, isGenerating]);
 
@@ -1208,11 +1148,7 @@ const currentVersion = generatedImage;
     return newVersions;
   });
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
+
 
 };
 
@@ -1232,11 +1168,7 @@ const redoItem = redoStack[0];
   // Remove the used item from redo stack
   setRedoStack((prev) => prev.slice(1));
 }
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
+
 
 };
 
@@ -1464,11 +1396,7 @@ img.onerror = () => {
   const variantsOverlay = document.getElementById("variants-overlay");
   if (variantsOverlay) document.body.removeChild(variantsOverlay);
 };
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-IGNORE_WHEN_COPYING_END
+
 
 };
 
