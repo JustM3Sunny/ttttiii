@@ -202,16 +202,16 @@ const Home = () => {
 
       // Add feature-specific enhancements
       if (features.enhanceDetails) {
-        enhancedPrompt += ", highly detailed, intricate details, sharp focus";
+        enhancedPrompt += ", highly detailed, intricate details, sharp focus more enhanced and detailed 8k ultra quality";
       }
 
       if (features.hdrEffect) {
-        enhancedPrompt += ", HDR, dramatic lighting, high dynamic range";
+        enhancedPrompt += ", HDR, dramatic lighting, high dynamic range more enhanced and detailed 8k ultra quality";
       }
 
       if (features.faceCorrection) {
         enhancedPrompt +=
-          ", perfect face, detailed facial features, realistic skin texture";
+          ", perfect face more enhanced and detailed 8k ultra quality, detailed facial features, realistic skin texture";
       }
 
       // Add style-specific enhancements
@@ -450,6 +450,7 @@ const Home = () => {
         // Fallback to local enhancement if API fails
         const enhancementPhrases = [
           "ultra detailed",
+          "more enhanced and detailed 8k ultra quality",
           "professional lighting",
           "cinematic composition",
           "4K resolution",
