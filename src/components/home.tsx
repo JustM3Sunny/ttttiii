@@ -153,6 +153,50 @@ const Home = () => {
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [variants, setVariants] = useState<string[]>([]);
 
+  const [availableFeatures, setAvailableFeatures] = useState([
+    "Dreamy",
+    "Vibrant",
+    "Noir",
+    "Cyberpunk",
+    "Watercolor",
+  ]);
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+
+  // Function to handle random prompt generation
+  const handleGenerateRandomPrompt = () => {
+    const randomPrompts = [
+      "A futuristic cityscape at night with neon lights, tall skyscrapers, and flying vehicles. Cyberpunk style with dramatic lighting.",
+      "A serene nature scene with sunlight filtering through trees, creating a magical atmosphere. Photorealistic quality with perfect composition.",
+      "A whimsical fairy-tale scene with a hidden cottage in an enchanted forest, detailed foliage, and glowing mushrooms.",
+      "A majestic dragon perched atop a snow-capped mountain, rendered in a high-resolution, realistic style with dynamic lighting.",
+      "An underwater scene with colorful coral reefs, exotic fish, and a sunken pirate ship, brought to life with vibrant hues and intricate details.",
+    ];
+    const randomIndex = Math.floor(Math.random() * randomPrompts.length);
+    setPrompt(randomPrompts[randomIndex]);
+  };
+
+  // Function to generate image based on selected feature variants
+  const handleGenerateFeatureVariant = async (feature: string) => {
+    if (!prompt.trim()) return;
+
+    // Add feature to the prompt if not already selected
+    if (!selectedFeatures.includes(feature)) {
+      setSelectedFeatures((prev) => [...prev, feature]);
+      setPrompt((prevPrompt) => `${prevPrompt}, ${feature}`);
+    }
+
+    // If feature is already selected, remove it from the prompt
+    else {
+      setSelectedFeatures((prev) => prev.filter((f) => f !== feature));
+      setPrompt((prevPrompt) =>
+        prevPrompt.replace(new RegExp(`,?\\s*${feature}`, "i"), "").trim(),
+      );
+    }
+
+    // Generate image
+    await handleGenerateImage();
+  };
+
   // Advanced image generation function with Gemini integration
   const handleGenerateImage = async () => {
     if (!prompt.trim()) return;
@@ -450,9 +494,10 @@ const Home = () => {
         // Fallback to local enhancement if API fails
         const enhancementPhrases = [
           "ultra detailed",
+          "highly attracttive full image",
           "professional lighting",
           "cinematic composition",
-          "4K resolution",
+          "8K resolution",
           "photorealistic",
           "dramatic lighting",
           "high quality",
@@ -827,7 +872,7 @@ const Home = () => {
               brightness: 100,
               contrast: 130,
               saturation: 110,
-              hue: 0,
+              hue: 0,,
               sepia: 30,
             },
             { brightness: 105, contrast: 95, saturation: 120, hue: 30 },
@@ -1511,6 +1556,14 @@ const Home = () => {
                     onEnhancePrompt={handleEnhancePrompt}
                     onImageUpload={handleImageUpload}
                   />
+                  <div className="flex justify-between mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handleGenerateRandomPrompt}
+                    >
+                      Generate Random Prompt
+                    </Button>
+                  </div>
                 </section>
               </div>
             )}
@@ -1691,453 +1744,475 @@ const Home = () => {
               </section>
             )}
 
-            {/* Payment Plans Section */}
-            {activeFeature === "text-to-image" && showPaymentPlans && (
-              <section>
-                <PaymentPlans
-                  theme="dark"
-                  onPurchase={(plan, planCredits) => {
-                    setCredits((prev) => prev + planCredits);
-                    setShowPaymentPlans(false);
-                  }}
-                />
-              </section>
-            )}
-
-            {/* Generate Button - only show for text-to-image */}
+            {/* Feature Variants - only show for text-to-image */}
             {activeFeature === "text-to-image" && (
-              <section className="flex flex-col items-center justify-center space-y-4">
-                <GenerateButton
-                  onClick={() => {
-                    setCredits((prev) => Math.max(0, prev - 1));
-                    handleGenerateImage();
-                  }}
-                  onFastGenerate={() => {
-                    if (credits <= 0) {
-                      setShowPaymentPlans(true);
-                      return;
-                    }
-                    setCredits((prev) => Math.max(0, prev - 1));
-                    handleGenerateImage();
-                  }}
-                  isLoading={
-                    isGenerating || isEnhancingPrompt || isAnalyzingImage
-                  }
-                  disabled={
-                    !prompt.trim() ||
-                    isGenerating ||
-                    isEnhancingPrompt ||
-                    isAnalyzingImage
-                  }
-                  theme="dark"
-                  credits={credits}
-                  estimatedTime={steps * 0.5}
-                  text={
-                    isEnhancingPrompt
-                      ? "Enhancing Prompt..."
-                      : isAnalyzingImage
-                        ? "Analyzing Image..."
-                        : "Generate Image"
-                  }
-                />
-                {credits < 10 && (
-                  <Button
-                    onClick={() => setShowPaymentPlans(true)}
-                    variant="outline"
-                    className="text-sm text-blue-400 hover:text-blue-300"
-                  >
-                    Running low on credits? Buy more here!
-                  </Button>
-                )}
-              </section>
-            )}
-
-            {/* Results Display - always show */}
-            {generatedImage && (
               <section>
-                <ResultsDisplay
-                  generatedImage={generatedImage}
-                  previousVersions={previousVersions}
-                  isLoading={isGenerating}
-                  onDownload={handleDownload}
-                  onShare={handleShare}
-                  onModify={handleModify}
-                  onCopy={() => navigator.clipboard.writeText(generatedImage)}
-                  onFullscreen={() => {
-                    if (!generatedImage) return;
+                <h2 className="text-lg font-semibold mb-4">
+                  Apply Feature Variants
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {availableFeatures.map((feature) => (
+                    <Button
+                      key={feature}
+                      variant={
+                        selectedFeatures.includes(feature)
+                          ? "contained"
+                          : "outline"
+                      }
+                      onClick={() => handleGenerateFeatureVariant(feature)}
+className={selectedFeatures.includes(feature)
+? "bg-blue-500 text-white"
+: "text-blue-400 border-blue-400 hover:bg-blue-500 hover:text-white"}
+>
+{feature}
+</Button>
+))}
+</div>
+</section>
+)}        {/* Payment Plans Section */}
+        {activeFeature === "text-to-image" && showPaymentPlans && (
+          <section>
+            <PaymentPlans
+              theme="dark"
+              onPurchase={(plan, planCredits) => {
+                setCredits((prev) => prev + planCredits);
+                setShowPaymentPlans(false);
+              }}
+            />
+          </section>
+        )}
 
-                    // Create a fullscreen modal with the image
-                    const img = new Image();
-                    img.src = generatedImage;
-                    img.style.maxWidth = "100%";
-                    img.style.maxHeight = "100vh";
-                    img.style.objectFit = "contain";
-
-                    const modal = document.createElement("div");
-                    modal.style.position = "fixed";
-                    modal.style.top = "0";
-                    modal.style.left = "0";
-                    modal.style.width = "100%";
-                    modal.style.height = "100%";
-                    modal.style.backgroundColor = "rgba(0,0,0,0.9)";
-                    modal.style.display = "flex";
-                    modal.style.justifyContent = "center";
-                    modal.style.alignItems = "center";
-                    modal.style.zIndex = "9999";
-                    modal.style.cursor = "pointer";
-
-                    // Add close button
-                    const closeBtn = document.createElement("button");
-                    closeBtn.textContent = "×";
-                    closeBtn.style.position = "absolute";
-                    closeBtn.style.top = "20px";
-                    closeBtn.style.right = "20px";
-                    closeBtn.style.fontSize = "30px";
-                    closeBtn.style.color = "white";
-                    closeBtn.style.background = "none";
-                    closeBtn.style.border = "none";
-                    closeBtn.style.cursor = "pointer";
-                    closeBtn.style.zIndex = "10000";
-                    closeBtn.onclick = (e) => {
-                      e.stopPropagation();
-                      document.body.removeChild(modal);
-                    };
-
-                    // Add download button
-                    const downloadBtn = document.createElement("button");
-                    downloadBtn.textContent = "Download";
-                    downloadBtn.style.position = "absolute";
-                    downloadBtn.style.bottom = "20px";
-                    downloadBtn.style.padding = "10px 20px";
-                    downloadBtn.style.backgroundColor = "#3b82f6";
-                    downloadBtn.style.color = "white";
-                    downloadBtn.style.border = "none";
-                    downloadBtn.style.borderRadius = "5px";
-                    downloadBtn.style.cursor = "pointer";
-                    downloadBtn.style.zIndex = "10000";
-                    downloadBtn.onclick = (e) => {
-                      e.stopPropagation();
-                      handleDownload();
-                    };
-
-                    modal.onclick = () => {
-                      document.body.removeChild(modal);
-                    };
-
-                    modal.appendChild(img);
-                    modal.appendChild(closeBtn);
-                    modal.appendChild(downloadBtn);
-                    document.body.appendChild(modal);
-                  }}
-                  onVariation={handleCreateVariation}
-                  onUndo={handleUndo}
-                  onRedo={handleRedo}
-                  canUndo={previousVersions.length > 0}
-                  canRedo={redoStack.length > 0}
-                  previousVersions={variants}
-                  onSelectVariant={(variantUrl) => {
-                    if (generatedImage) {
-                      setPreviousVersions((prev) => [generatedImage, ...prev]);
-                    }
-                    setGeneratedImage(variantUrl);
-                  }}
-                  onUpscale={handleUpscale}
-                  theme="dark"
-                />
-              </section>
+        {/* Generate Button - only show for text-to-image */}
+        {activeFeature === "text-to-image" && (
+          <section className="flex flex-col items-center justify-center space-y-4">
+            <GenerateButton
+              onClick={() => {
+                setCredits((prev) => Math.max(0, prev - 1));
+                handleGenerateImage();
+              }}
+              onFastGenerate={() => {
+                if (credits <= 0) {
+                  setShowPaymentPlans(true);
+                  return;
+                }
+                setCredits((prev) => Math.max(0, prev - 1));
+                handleGenerateImage();
+              }}
+              isLoading={
+                isGenerating || isEnhancingPrompt || isAnalyzingImage
+              }
+              disabled={
+                !prompt.trim() ||
+                isGenerating ||
+                isEnhancingPrompt ||
+                isAnalyzingImage
+              }
+              theme="dark"
+              credits={credits}
+              estimatedTime={steps * 0.5}
+              text={
+                isEnhancingPrompt
+                  ? "Enhancing Prompt..."
+                  : isAnalyzingImage
+                    ? "Analyzing Image..."
+                    : "Generate Image"
+              }
+            />
+            {credits < 10 && (
+              <Button
+                onClick={() => setShowPaymentPlans(true)}
+                variant="outline"
+                className="text-sm text-blue-400 hover:text-blue-300"
+              >
+                Running low on credits? Buy more here!
+              </Button>
             )}
-          </div>
-        </main>
+          </section>
+        )}
 
-        <div className="w-full bg-gray-900 text-white py-4 px-4 border-t border-gray-800 mt-auto">
-          <div className="container mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="mb-4 md:mb-0">
-                <p className="text-sm">Version 1.0.0</p>
-                <p className="text-xs text-gray-400">
-                  © 2024 AI Image Generator
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm">
-                  Developed by <span className="font-bold">Shannniii</span>
-                </p>
-                <p className="text-xs text-gray-400">
-                  Fullstack Developer | AI Enthusiast
-                </p>
-                <div className="flex space-x-2">
-                  <a
-                    href="mailto:justaskcoding76@gmail.com"
-                    className="text-xs text-blue-400 hover:text-blue-300"
-                  >
-                    justaskcoding76@gmail.com
-                  </a>
-                  <button
-                    onClick={() => setIsAdmin(!isAdmin)}
-                    className="text-xs text-blue-400 hover:text-blue-300"
-                  >
-                    {isAdmin ? "Exit Admin" : "Admin Panel"}
-                  </button>
-                </div>
-              </div>
+        {/* Results Display - always show */}
+        {generatedImage && (
+          <section>
+            <ResultsDisplay
+              generatedImage={generatedImage}
+              previousVersions={previousVersions}
+              isLoading={isGenerating}
+              onDownload={handleDownload}
+              onShare={handleShare}
+              onModify={handleModify}
+              onCopy={() => navigator.clipboard.writeText(generatedImage)}
+              onFullscreen={() => {
+                if (!generatedImage) return;
+
+                // Create a fullscreen modal with the image
+                const img = new Image();
+                img.src = generatedImage;
+                img.style.maxWidth = "100%";
+                img.style.maxHeight = "100vh";
+                img.style.objectFit = "contain";
+
+                const modal = document.createElement("div");
+                modal.style.position = "fixed";
+                modal.style.top = "0";
+                modal.style.left = "0";
+                modal.style.width = "100%";
+                modal.style.height = "100%";
+                modal.style.backgroundColor = "rgba(0,0,0,0.9)";
+                modal.style.display = "flex";
+                modal.style.justifyContent = "center";
+                modal.style.alignItems = "center";
+                modal.style.zIndex = "9999";
+                modal.style.cursor = "pointer";
+
+                // Add close button
+                const closeBtn = document.createElement("button");
+                closeBtn.textContent = "×";
+                closeBtn.style.position = "absolute";
+                closeBtn.style.top = "20px";
+                closeBtn.style.right = "20px";
+                closeBtn.style.fontSize = "30px";
+                closeBtn.style.color = "white";
+                closeBtn.style.background = "none";
+                closeBtn.style.border = "none";
+                closeBtn.style.cursor = "pointer";
+                closeBtn.style.zIndex = "10000";
+                closeBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  document.body.removeChild(modal);
+                };
+
+                // Add download button
+                const downloadBtn = document.createElement("button");
+                downloadBtn.textContent = "Download";
+                downloadBtn.style.position = "absolute";
+                downloadBtn.style.bottom = "20px";
+                downloadBtn.style.padding = "10px 20px";
+                downloadBtn.style.backgroundColor = "#3b82f6";
+                downloadBtn.style.color = "white";
+                downloadBtn.style.border = "none";
+                downloadBtn.style.borderRadius = "5px";
+                downloadBtn.style.cursor = "pointer";
+                downloadBtn.style.zIndex = "10000";
+                downloadBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  handleDownload();
+                };
+
+                modal.onclick = () => {
+                  document.body.removeChild(modal);
+                };
+
+                modal.appendChild(img);
+                modal.appendChild(closeBtn);
+                modal.appendChild(downloadBtn);
+                document.body.appendChild(modal);
+              }}
+              onVariation={handleCreateVariation}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={previousVersions.length > 0}
+              canRedo={redoStack.length > 0}
+              previousVersions={variants}
+              onSelectVariant={(variantUrl) => {
+                if (generatedImage) {
+                  setPreviousVersions((prev) => [generatedImage, ...prev]);
+                }
+                setGeneratedImage(variantUrl);
+              }}
+              onUpscale={handleUpscale}
+              theme="dark"
+            />
+          </section>
+        )}
+      </div>
+    </main>
+
+    <div className="w-full bg-gray-900 text-white py-4 px-4 border-t border-gray-800 mt-auto">
+      <div className="container mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-center">
+          <div className="mb-4 md:mb-0">
+            <p className="text-sm">Version 1.0.0</p>
+            <p className="text-xs text-gray-400">
+              © 2024 AI Image Generator
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm">
+              Developed by <span className="font-bold">Shannniii</span>
+            </p>
+            <p className="text-xs text-gray-400">
+              Fullstack Developer | AI Enthusiast
+            </p>
+            <div className="flex space-x-2">
+              <a
+                href="mailto:justaskcoding76@gmail.com"
+                className="text-xs text-blue-400 hover:text-blue-300"
+              >
+                justaskcoding76@gmail.com
+              </a>
+              <button
+                onClick={() => setIsAdmin(!isAdmin)}
+                className="text-xs text-blue-400 hover:text-blue-300"
+              >
+                {isAdmin ? "Exit Admin" : "Admin Panel"}
+              </button>
             </div>
-          </div>
-        </div>
-
-        {/* Mobile Fixed Bottom Navigation */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 z-40">
-          <div className="flex justify-around items-center py-3">
-            <button
-              onClick={() => setActiveFeature("text-to-image")}
-              className={`flex flex-col items-center ${activeFeature === "text-to-image" ? "text-blue-400" : "text-gray-400"}`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                <polyline points="14 2 14 8 20 8" />
-                <path d="M12 18v-6" />
-                <path d="m9 15 3 3 3-3" />
-              </svg>
-              <span className="text-xs mt-1">Generate</span>
-            </button>
-            <button
-              onClick={() => setActiveFeature("basic-drawing")}
-              className={`flex flex-col items-center ${activeFeature === "basic-drawing" ? "text-blue-400" : "text-gray-400"}`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 19l7-7 3 3-7 7-3-3z" />
-                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-                <path d="m2 2 7.586 7.586" />
-                <circle cx="11" cy="11" r="2" />
-              </svg>
-              <span className="text-xs mt-1">Draw</span>
-            </button>
-            <button
-              onClick={() => setActiveFeature("styles")}
-              className={`flex flex-col items-center ${activeFeature === "styles" ? "text-blue-400" : "text-gray-400"}`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="13.5" cy="6.5" r="2.5" />
-                <circle cx="19" cy="17" r="2" />
-                <circle cx="6" cy="17" r="2" />
-                <path d="M16 8.2c1 .7 1.7 1.7 2.3 2.8" />
-                <path d="M7.5 8.2c-.7.6-1.2 1.5-1.5 2.4" />
-                <path d="M7 15c.3-1.1.7-2.1 1.5-3" />
-                <path d="M16 15c-.3-1.1-.7-2.1-1.5-3" />
-              </svg>
-              <span className="text-xs mt-1">Styles</span>
-            </button>
-            <button
-              onClick={() => setActiveFeature("history")}
-              className={`flex flex-col items-center ${activeFeature === "history" ? "text-blue-400" : "text-gray-400"}`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 8v4l3 3" />
-                <circle cx="12" cy="12" r="10" />
-              </svg>
-              <span className="text-xs mt-1">History</span>
-            </button>
-            <button
-              onClick={() => setShowPaymentPlans(true)}
-              className="flex flex-col items-center text-gray-400"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <line x1="2" y1="10" x2="22" y2="10" />
-              </svg>
-              <span className="text-xs mt-1">Credits</span>
-            </button>
           </div>
         </div>
       </div>
-
-      {/* Floating Chatbot */}
-      {showChatbot && (
-        <div
-          className="fixed z-50 w-[95vw] md:w-80 h-[500px] shadow-xl rounded-lg overflow-hidden"
-          style={{
-            ...chatPosition,
-            right: window.innerWidth < 768 ? "2.5%" : chatPosition.right,
-            left: window.innerWidth < 768 ? "2.5%" : "auto",
-            bottom: window.innerWidth < 768 ? "70px" : chatPosition.bottom,
-          }}
-        >
-          <ChatbotHelp
-            onClose={() => setShowChatbot(false)}
-            theme={currentTheme}
-          />
-        </div>
-      )}
-
-      {/* Chatbot Trigger Button */}
-      {!showChatbot && (
-        <button
-          onClick={() => setShowChatbot(true)}
-          className={`fixed z-50 bottom-20 md:bottom-5 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-lg ${currentTheme === "dark" ? "bg-gray-800" : currentTheme === "evening" ? "bg-indigo-800" : "bg-white"}`}
-        >
-          <div className="relative">
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`${currentTheme === "dark" || currentTheme === "evening" ? "text-white" : "text-gray-900"}`}
-            >
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-          </div>
-        </button>
-      )}
-
-      {/* History Sidebar */}
-      {showHistorySidebar && (
-        <div className="fixed inset-0 z-50 flex">
-          <div
-            className="absolute inset-0 bg-black bg-opacity-50"
-            onClick={() => setShowHistorySidebar(false)}
-          ></div>
-          <div
-            className={`relative w-full md:w-96 h-full bg-gray-900 text-white shadow-xl transition-transform duration-300 transform ${showHistorySidebar ? "translate-x-0" : "-translate-x-full"}`}
-          >
-            <HistorySidebar
-              history={imageHistory}
-              onClose={() => setShowHistorySidebar(false)}
-              onSelect={handleSelectHistoryImage}
-              onDownload={handleDownloadHistoryImage}
-              onShare={handleShareHistoryImage}
-              onEdit={handleEditHistoryImage}
-              theme="dark"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Settings Dialog */}
-      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Settings</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-medium">Image Generation</h3>
-              <div className="space-y-2 mt-2">
-                <div className="flex items-center justify-between">
-                  <span>Default Model</span>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1"
-                  >
-                    <option value="stable-diffusion-xl">
-                      Stable Diffusion XL
-                    </option>
-                    <option value="stable-diffusion-2">
-                      Stable Diffusion 2
-                    </option>
-                    <option value="midjourney-v5">Midjourney Style</option>
-                    <option value="dall-e-3">DALL-E Style</option>
-                  </select>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Default Dimensions</span>
-                  <select
-                    value={`${dimensions.width}x${dimensions.height}`}
-                    onChange={(e) => {
-                      const [width, height] = e.target.value
-                        .split("x")
-                        .map(Number);
-                      setDimensions({ width, height });
-                    }}
-                    className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1"
-                  >
-                    <option value="512x512">512x512</option>
-                    <option value="768x768">768x768</option>
-                    <option value="1024x1024">1024x1024</option>
-                    <option value="1024x576">1024x576 (16:9)</option>
-                    <option value="576x1024">576x1024 (9:16)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-lg font-medium">Interface</h3>
-              <div className="space-y-2 mt-2">
-                <div className="flex items-center justify-between">
-                  <span>Theme</span>
-                  <select
-                    value={currentTheme}
-                    onChange={(e) => handleThemeChange(e.target.value)}
-                    className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1"
-                  >
-                    <option value="dark">Dark</option>
-                    <option value="evening">Evening</option>
-                    <option value="luxury">Luxury</option>
-                    <option value="neon">Neon</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
-  );
-};
 
-export default Home;
+    {/* Mobile Fixed Bottom Navigation */}
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 z-40">
+      <div className="flex justify-around items-center py-3">
+        <button
+          onClick={() => setActiveFeature("text-to-image")}
+          className={`flex flex-col items-center ${activeFeature === "text-to-image" ? "text-blue-400" : "text-gray-400"}`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+            <polyline points="14 2 14 8 20 8" />
+            <path d="M12 18v-6" />
+            <path d="m9 15 3 3 3-3" />
+          </svg>
+          <span className="text-xs mt-1">Generate</span>
+        </button>
+        <button
+          onClick={() => setActiveFeature("basic-drawing")}
+          className={`flex flex-col items-center ${activeFeature === "basic-drawing" ? "text-blue-400" : "text-gray-400"}`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 19l7-7 3 3-7 7-3-3z" />
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+            <path d="m2 2 7.586 7.586" />
+            <circle cx="11" cy="11" r="2" />
+          </svg>
+          <span className="text-xs mt-1">Draw</span>
+        </button>
+        <button
+          onClick={() => setActiveFeature("styles")}
+          className={`flex flex-col items-center ${activeFeature === "styles" ? "text-blue-400" : "text-gray-400"}`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="13.5" cy="6.5" r="2.5" />
+            <circle cx="19" cy="17" r="2" />
+            <circle cx="6" cy="17" r="2" />
+            <path d="M16 8.2c1 .7 1.7 1.7 2.3 2.8" />
+            <path d="M7.5 8.2c-.7.6-1.2 1.5-1.5 2.4" />
+            <path d="M7 15c.3-1.1.7-2.1 1.5-3" />
+            <path d="M16 15c-.3-1.1-.7-2.1-1.5-3" />
+          </svg>
+          <span className="text-xs mt-1">Styles</span>
+        </button>
+        <button
+          onClick={() => setActiveFeature("history")}
+          className={`flex flex-col items-center ${activeFeature === "history" ? "text-blue-400" : "text-gray-400"}`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 8v4l3 3" />
+            <circle cx="12" cy="12" r="10" />
+          </svg>
+          <span className="text-xs mt-1">History</span>
+        </button>
+        <button
+          onClick={() => setShowPaymentPlans(true)}
+          className="flex flex-col items-center text-gray-400"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="2" y="5" width="20" height="14" rx="2" />
+            <line x1="2" y1="10" x2="22" y2="10" />
+          </svg>
+          <span className="text-xs mt-1">Credits</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {/* Floating Chatbot */}
+  {showChatbot && (
+    <div
+      className="fixed z-50 w-[95vw] md:w-80 h-[500px] shadow-xl rounded-lg overflow-hidden"
+      style={{
+        ...chatPosition,
+        right: window.innerWidth < 768 ? "2.5%" : chatPosition.right,
+        left: window.innerWidth < 768 ? "2.5%" : "auto",
+        bottom: window.innerWidth < 768 ? "70px" : chatPosition.bottom,
+      }}
+    >
+      <ChatbotHelp
+        onClose={() => setShowChatbot(false)}
+        theme={currentTheme}
+      />
+    </div>
+  )}
+
+  {/* Chatbot Trigger Button */}
+  {!showChatbot && (
+    <button
+      onClick={() => setShowChatbot(true)}
+      className={`fixed z-50 bottom-20 md:bottom-5 right-5 w-14 h-14 rounded-full flex items-center justify-center shadow-lg ${currentTheme === "dark" ? "bg-gray-800" : currentTheme === "evening" ? "bg-indigo-800" : "bg-white"}`}
+    >
+      <div className="relative">
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`${currentTheme === "dark" || currentTheme === "evening" ? "text-white" : "text-gray-900"}`}
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </div>
+    </button>
+  )}
+
+  {/* History Sidebar */}
+  {showHistorySidebar && (
+    <div className="fixed inset-0 z-50 flex">
+      <div
+        className="absolute inset-0 bg-black bg-opacity-50"
+        onClick={() => setShowHistorySidebar(false)}
+      ></div>
+      <div
+        className={`relative w-full md:w-96 h-full bg-gray-900 text-white shadow-xl transition-transform duration-300 transform ${showHistorySidebar ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <HistorySidebar
+          history={imageHistory}
+          onClose={() => setShowHistorySidebar(false)}
+          onSelect={handleSelectHistoryImage}
+          onDownload={handleDownloadHistoryImage}
+          onShare={handleShareHistoryImage}
+          onEdit={handleEditHistoryImage}
+          theme="dark"
+        />
+      </div>
+    </div>
+  )}
+
+  {/* Settings Dialog */}
+  <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Settings</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-lg font-medium">Image Generation</h3>
+          <div className="space-y-2 mt-2">
+            <div className="flex items-center justify-between">
+              <span>Default Model</span>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1"
+              >
+                <option value="stable-diffusion-xl">
+                  Stable Diffusion XL
+                </option>
+                <option value="stable-diffusion-2">
+                  Stable Diffusion 2
+                </option>
+                <option value="midjourney-v5">Midjourney Style</option>
+                <option value="dall-e-3">DALL-E Style</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Default Dimensions</span>
+              <select
+                value={`${dimensions.width}x${dimensions.height}`}
+                onChange={(e) => {
+                  const [width, height] = e.target.value
+                    .split("x")
+                    .map(Number);
+                  setDimensions({ width, height });
+                }}
+                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1"
+              >
+                <option value="512x512">512x512</option>
+                <option value="768x768">768x768</option>
+                <option value="1024x1024">1024x1024</option>
+                <option value="1024x576">1024x576 (16:9)</option>
+                <option value="576x1024">576x1024 (9:16)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3 className="text-lg font-medium">Interface</h3>
+          <div className="space-y-2 mt-2">
+            <div className="flex items-center justify-between">
+              <span>Theme</span>
+              <select
+                value={currentTheme}
+                onChange={(e) => handleThemeChange(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1"
+              >
+                <option value="dark">Dark</option>
+                <option value="evening">Evening</option>
+                <option value="luxury">Luxury</option>
+                <option value="neon">Neon</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+</div>);
+};
